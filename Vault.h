@@ -5,14 +5,12 @@
 
 class Vault {
 public:
-	Vault(const std::string &fileName);
+	Vault(const std::string &fileName, const std::string &vaultKey);
 	void write();
-	std::string encryptionKeyHash();
-	
 private:
 	std::string nonce;
 	std::string mac;
-	std::string keyHash;
+	std::string encryptionKeyHash;
 }
 
 #endif
