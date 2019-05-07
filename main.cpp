@@ -7,23 +7,23 @@
 #include <string>
 
 std::string initialize();
-void processVaultCommand(const CommandLineParser& args, const std::string &activeVault);
-void processAccountCommand(const CommandLineParser& args, const std::string &activeVault);
-void processAccountPrintCommand(const CommandLineParser& args, const std::string &activeVault);
-void processAccountClipCommand(const CommandLineParser& args, const std::string &activeVault);
-void processAccountUpdateCommand(const CommandLineParser& args, const std::string &activeVault);
-void processAccountAddCommand(const CommandLineParser& args, const std::string &activeVault);
+void processVaultCommand(const CommandLineParser& args, const std::string &activeVaultName);
+void processAccountCommand(const CommandLineParser& args, const std::string &activeVaultName);
+void processAccountPrintCommand(const CommandLineParser& args, const Vault &activeVault);
+void processAccountClipCommand(const CommandLineParser& args, const Vault &activeVault);
+void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault);
+void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault);
 
 int main(int argc, char *argv[]) {
-	std::string activeVault = initialize();
+	std::string activeVaultName = initialize();
 
 	CommandLineParser cmdLineParser(argc, argv);
 	if (cmdLineParser.containsArg("-v")) {
 		// This is a vault command
-		processVaultCommand(cmdLineParser, activeVault);
+		processVaultCommand(cmdLineParser, activeVaultName);
 	} else {
 		// This is a command that pertains to some account (or accounts) in the currently active vault
-		processAccountCommand(cmdLineParser, activeVault);
+		processAccountCommand(cmdLineParser, activeVaultName);
 	}
 }
 
@@ -37,7 +37,7 @@ std::string initialize() {
 /**
 	Process a command that pertains to an entire vault
 */
-void processVaultCommand(const CommandLineParser& args, const std::string &activeVault)
+void processVaultCommand(const CommandLineParser& args, const std::string &activeVaultName)
 {
 	std::string metaCommand = args.getArg("-v");
 	if (metaCommand == "add") {
@@ -60,15 +60,15 @@ void processVaultCommand(const CommandLineParser& args, const std::string &activ
 /**
 	Process a command that pertains to some account (or accounts) in the currently active vault
 */
-void processAccountCommand(const CommandLineParser& args, const std::string &activeVault)
+void processAccountCommand(const CommandLineParser& args, const std::string &activeVaultName)
 {
 	std::string vaultKey = arg.getArg("-k");
 	if (vaultKey == "") {
 		std::cout << "Error: Vault key must be provided to access the active vault's accounts" << std::endl;
 		return;
 	}
-	
-	Vault activeVault(activeVault, vaultKey);
+
+	Vault activeVault(activeVaultName, vaultKey);
 	if (args.containsArg("-p")) {
 		processAccountPrintCommand(cmdLineParser, activeVault);
 	} else if (args.containsArg("-c")) {
@@ -84,7 +84,7 @@ void processAccountCommand(const CommandLineParser& args, const std::string &act
 	}
 }
 
-void processAccountPrintCommand(const CommandLineParser& args, const std::string &activeVault)
+void processAccountPrintCommand(const CommandLineParser& args, const Vault &activeVault)
 {
 	if (args.containsArg("-l")) {
 		// List all accounts in the active vault
@@ -93,20 +93,20 @@ void processAccountPrintCommand(const CommandLineParser& args, const std::string
 
 	std::string accountName = args.getArg("-n");
 	if (args.containsArg("-un")) {
-		std::string username = args.getArg("-un");
-		// Update the username of the given account
+		std::cout << activeVault.getAccount(accountName).username() << std::endl;
 	} else if (args.containsArg("-pw")) {
-		std::string password = args.getArg("-pw");
-		// Update the password of the given account
+		std::cout << activeVault.getAccount(accountName).password() << std::endl;
 	} else if (args.containsArg("-note")) {
-		std::string note = args.getArg("-note");
-		// Update the note of the given account
+		std::cout << activeVault.getAccount(accountName).note() << std::endl;
 	} else {
-		// Print all details of the given account
+		const Account account = activeVault.getAccount(accountName);
+		std::cout << "un=" << account.username() << '\n'
+			<< "pw=" << account.password() << '\n'
+			<< "note=" << account.note() << std::endl;
 	}
 }
 
-void processAccountClipCommand(const CommandLineParser& args, const std::string &activeVault)
+void processAccountClipCommand(const CommandLineParser& args, const Vault &activeVault)
 {
 	std::string accountName = args.getArg("-n");
 	if (args.containsArg("-un")) {
@@ -118,7 +118,7 @@ void processAccountClipCommand(const CommandLineParser& args, const std::string 
 	}
 }
 
-void processAccountUpdateCommand(const CommandLineParser& args, const std::string &activeVault)
+void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault)
 {
 	std::string accountName = args.getArg("-n");
 	if (args.containsArg("-un")) {
@@ -138,7 +138,7 @@ void processAccountUpdateCommand(const CommandLineParser& args, const std::strin
 	}
 }
 
-void processAccountAddCommand(const CommandLineParser& args, const std::string &activeVault)
+void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault)
 {
 	std::string accountName = args.getArg("-n");
 	if (args.containsArg("-f")) {

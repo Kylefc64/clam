@@ -6,7 +6,8 @@
 class Vault {
 public:
 	Vault(const std::string &fileName, const std::string &vaultKey);
-	void write();
+	void write() const;
+	const Account &getAccount(const std::string &tag) const;
 private:
 	std::string nonce;
 	std::string mac;
