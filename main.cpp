@@ -29,8 +29,16 @@ int main(int argc, char *argv[]) {
 
 std::string initialize() {
 	struct stat info;
-	if (stat("config", &info) != 0) {
-		// Create config file and default vault
+	if ((stat("meta", &info) != 0) || (info.st_mode & S_IFDIR)) {
+		// Create meta dir/file and vaults dir & default vault file
+		system("mkdir meta/");
+		//system("touch meta/meta");
+	}
+
+	if ((stat("vaults", &info) != 0) || (info.st_mode & S_IFDIR)) {
+		// Create meta dir/file and vaults dir & default vault file
+		system("mkdir vaults/");
+		//system("touch vaults/default");
 	}
 }
 
@@ -87,7 +95,7 @@ void processAccountCommand(const CommandLineParser& args, const std::string &act
 void processAccountPrintCommand(const CommandLineParser& args, const Vault &activeVault)
 {
 	if (args.containsArg("-l")) {
-		// List all accounts in the active vault
+		// TODO: List all accounts in the active vault
 		return;
 	}
 
@@ -110,45 +118,74 @@ void processAccountClipCommand(const CommandLineParser& args, const Vault &activ
 {
 	std::string accountName = args.getArg("-n");
 	if (args.containsArg("-un")) {
-		// Clip decrypted username of the given account
+		// TODO: Clip decrypted username of the given account
 	} else if (args.containsArg("-pw")) {
-		// Clip decrypted password of the given account
+		// TODO: Clip decrypted password of the given account
 	} else {
-		// Error
+		// TODO: Error
 	}
 }
 
 void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault)
 {
 	std::string accountName = args.getArg("-n");
+	if (!activeVault.exists(accountName))
+	{
+		// TODO: Error
+		return;
+	}
+
 	if (args.containsArg("-un")) {
 		std::string username = args.getArg("-un");
 		// Update the username of the given account
+		Account account = activeVault.getaccount(accountName);
+		account.username = username;
+		activeVault.updateAccount(account);
 	} else if (args.containsArg("-pw")) {
 		std::string password = args.getArg("-pw");
 		// Update the password of the given account
+		Account account = activeVault.getaccount(accountName);
+		account.password = password;
+		activeVault.updateAccount(account);
 	} else if (args.containsArg("-note")) {
 		std::string note = args.getArg("-note");
 		// Update the note of the given account
+		Account account = activeVault.getaccount(accountName);
+		account.note = note;
+		activeVault.updateAccount(account);
 	} else if (args.containsArg("-f")) {
 		std::string filePath = args.getArg("-f");
 		// Update all details of the given account
+		Account account(accountName, filePath);
+		activeVault.updateAccount(account);
 	} else {
-		// Error
+		// TODO: Error
 	}
 }
 
 void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault)
 {
 	std::string accountName = args.getArg("-n");
+	if (activeVault.exists(accountName))
+	{
+		// TODO: Error
+		return;
+	}
+
 	if (args.containsArg("-f")) {
 		std::string filePath = args.getArg("-f");
 		// Read the new account from the specified file
+		Account account(accountName, filePath);
+		activeVault.updateAccount(account);
 	} else if (args.containsArg("-un") && args.containsArg("-pw")) {
 		std::string username = args.getArg("-un");
 		std::string password = args.getArg("-pw");
 		// Create a new account with the given username and password
+		Account account(accountName, username, password);
+		activeVault.updateAccount(account);
 	} else {
 		// Create a new account with no details
+		Account account(accountName);
+		activeVault.updateAccount(account);
 	}
 }

@@ -4,7 +4,7 @@
 	Creates a new Account with the given tag with empty details.
 */
 Account::Account(const std::string &tag)
-: tag(tag)
+: tag(tag), username(""), password(""), note("")
 {
 	
 }
@@ -22,7 +22,7 @@ Account::Account(const std::string &tag, const std::string &filePath)
 	Creates a new Account with the given tag with the given username and password.
 */
 Account::Account(const std::string &tag, const std::string &un, const std::string &pw)
-: tag(tag), username(un), password(pw)
+: tag(tag), username(un), password(pw), note("")
 {
 
 }
