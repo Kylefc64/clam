@@ -8,16 +8,17 @@
 
 class Vault {
 public:
-	Vault(const std::string &fileName, const std::string &vaultKey, bool create);
+	Vault(const std::string &vaultName, const std::string &vaultKey, bool create);
+	~Vault();
 	const Account& getAccount(const std::string &tag) const;
 	void updateAccount(Account account);
 	bool exists(std::string accountTag);
 private:
-	std::string nonce;
-	std::string mac;
-	std::string encryptionKeyHash;
+	std::string vaultName;
+	std::string vaultKey;
 	std::vector<Account> accounts; // decrypted accounts
 	void write() const;
+	bool contentsEqual(const unsigned char *buffer1, const unsigned char *buffer2, uint32_t size) const;
 }
 
 #endif

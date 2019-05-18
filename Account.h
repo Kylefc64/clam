@@ -2,6 +2,7 @@
 #define ACCOUNT_H
 
 #include <string>
+#include <vector>
 
 class Account {
 public:
@@ -15,6 +16,7 @@ public:
 	void username(const std::string &un);
 	void password(const std::string &pw);
 	void note(const std::string &n);
+	std::vector<uint8_t> serialize() const;
 private:
 	std::string tag;
 	std::string username;

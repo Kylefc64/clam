@@ -2,8 +2,7 @@
 
 #include <vector>
 
-CommandLineParser::CommandLineParser(int argc, char **argv)
-{
+CommandLineParser::CommandLineParser(int argc, char **argv) {
 	std::vector<std::string> tokens;
 	for (int i = 1; i < argc; ++i) {
 		tokens.push_back(std::string(argv[i]));
@@ -22,13 +21,11 @@ CommandLineParser::CommandLineParser(int argc, char **argv)
 	}
 }
 
-bool CommandLineParser::containsArg(const std::string& arg)
-{
+bool CommandLineParser::containsArg(const std::string& arg) {
 	return argMap.find(arg) != argMap.end();
 }
 
-std::string CommandLineParser::getArg(const std::string& arg)
-{
+std::string CommandLineParser::getArg(const std::string& arg) {
 	if (argMap.find(arg) != argMap.end()) {
 		return argMap.at(arg);
 	} else {

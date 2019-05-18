@@ -76,6 +76,7 @@ void processAccountCommand(const CommandLineParser& args, const std::string &act
 		return;
 	}
 
+	// Attempt to load and decrypt vault:
 	Vault activeVault(activeVaultName, vaultKey);
 	if (args.containsArg("-p")) {
 		processAccountPrintCommand(cmdLineParser, activeVault);
@@ -92,6 +93,9 @@ void processAccountCommand(const CommandLineParser& args, const std::string &act
 	}
 }
 
+/**
+	Processes a print command. Assumes the active vault has successfully been decrypted.
+*/
 void processAccountPrintCommand(const CommandLineParser& args, const Vault &activeVault)
 {
 	if (args.containsArg("-l")) {
@@ -114,6 +118,9 @@ void processAccountPrintCommand(const CommandLineParser& args, const Vault &acti
 	}
 }
 
+/**
+	Processes a clip command. Assumes the active vault has successfully been decrypted.
+*/
 void processAccountClipCommand(const CommandLineParser& args, const Vault &activeVault)
 {
 	std::string accountName = args.getArg("-n");
@@ -126,6 +133,9 @@ void processAccountClipCommand(const CommandLineParser& args, const Vault &activ
 	}
 }
 
+/**
+	Processes an update command. Assumes the active vault has successfully been decrypted.
+*/
 void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault)
 {
 	std::string accountName = args.getArg("-n");
@@ -163,6 +173,9 @@ void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVau
 	}
 }
 
+/**
+	Processes an add command. Assumes the active vault has successfully been decrypted.
+*/
 void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault)
 {
 	std::string accountName = args.getArg("-n");
