@@ -9,6 +9,7 @@ public:
 	Account(const std::string &tag);
 	Account(const std::string &tag, const std::string &filePath);
 	Account(const std::string &tag, const std::string &un, const std::string &pw);
+	Account(const unsigned char *serializedAccount);
 	std::string tag() const;
 	std::string username() const;
 	std::string password() const;
@@ -17,6 +18,7 @@ public:
 	void password(const std::string &pw);
 	void note(const std::string &n);
 	std::vector<uint8_t> serialize() const;
+	void wipeSensitiveData();
 private:
 	std::string tag;
 	std::string username;

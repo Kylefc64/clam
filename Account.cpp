@@ -1,5 +1,7 @@
 #include "Account.h"
 
+#include <cstring>
+
 /**
 	Creates a new Account with the given tag with empty details.
 */
@@ -22,6 +24,50 @@ Account::Account(const std::string &tag, const std::string &filePath)
 Account::Account(const std::string &tag, const std::string &un, const std::string &pw)
 : tag(tag), username(un), password(pw), note("") {
 
+}
+
+/**
+	Constructs an Account from a serialized Account.
+	The provided pointer will be moved to point to the end
+	of the loaded Account.
+*/
+Account::Account(unsigned char **serializedAccount)
+{
+	uint32_t size = **(uint32_t **)serializedAccount;
+	*serializedAccount += 4; // advance past tag size
+	tag.reserve(size);
+	for (uint32_t i = 0; i < size; ++i)
+	{
+		tag += (*serializedAccount)[i];
+	}
+	*serializedAccount += size; // advance past tag
+
+	size = **(uint32_t **)serializedAccount;
+	*serializedAccount += 4; // advance past username size
+	username.reserve(size);
+	for (uint32_t i = 0; i < size; ++i)
+	{
+		username += (*serializedAccount)[i];
+	}
+	*serializedAccount += size; // advance username tag
+
+	size = **(uint32_t **)serializedAccount;
+	*serializedAccount += 4; // advance past password size
+	password.reserve(size);
+	for (uint32_t i = 0; i < size; ++i)
+	{
+		password += (*serializedAccount)[i];
+	}
+	*serializedAccount += size; // advance password tag
+
+	size = **(uint32_t **)serializedAccount;
+	*serializedAccount += 4; // advance past note size
+	note.reserve(size);
+	for (uint32_t i = 0; i < size; ++i)
+	{
+		note += (*serializedAccount)[i];
+	}
+	*serializedAccount += size; // advance past note
 }
 
 std::string Account::tag() const {
@@ -56,5 +102,26 @@ void Account::note(const std::string &n) {
 	Stores and returns a serialized version of this object as a byte vector.
 */
 std::vector<uint8_t> Account::serialize() const {
+	std::vector<uint8_t> serialized;
+	uint32_t tagSize = tag.size(),
+		usernameSize = username.size(),
+		passwordSize = password.size(),
+		noteSize = note.size();
+	serialized.insert(serialized.end(), &tagSize, &tagSize + 1);
+	serialized.insert(serialized.end(), tag.c_str(), tag.c_str() + tagSize);
+	serialized.insert(serialized.end(), &usernameSize, &usernameSize + 1);
+	serialized.insert(serialized.end(), username.c_str(), username.c_str() + usernameSize);
+	serialized.insert(serialized.end(), &passwordSize, &passwordSize + 1);
+	serialized.insert(serialized.end(), password.c_str(), password.c_str() + passwordSize);
+	serialized.insert(serialized.end(), &noteSize, &noteSize + 1);
+	serialized.insert(serialized.end(), note.c_str(), note.c_str() + noteSize);
+	return serialized;
+}
 
+void Account::wipeSensitiveData()
+{
+	memset(tag.c_str(), 0, tag.size());
+	memset(username.c_str(), 0, username.size());
+	memset(password.c_str(), 0, password.size());
+	memset(note.c_str(), 0, note.size());
 }

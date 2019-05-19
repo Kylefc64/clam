@@ -99,7 +99,7 @@ void processAccountCommand(const CommandLineParser& args, const std::string &act
 void processAccountPrintCommand(const CommandLineParser& args, const Vault &activeVault)
 {
 	if (args.containsArg("-l")) {
-		// TODO: List all accounts in the active vault
+		activeVault.printTags(std::cout);
 		return;
 	}
 
@@ -150,24 +150,24 @@ void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVau
 		// Update the username of the given account
 		Account account = activeVault.getaccount(accountName);
 		account.username = username;
-		activeVault.updateAccount(account);
+		activeVault.writeVault();
 	} else if (args.containsArg("-pw")) {
 		std::string password = args.getArg("-pw");
 		// Update the password of the given account
 		Account account = activeVault.getaccount(accountName);
 		account.password = password;
-		activeVault.updateAccount(account);
+		activeVault.writeVault();
 	} else if (args.containsArg("-note")) {
 		std::string note = args.getArg("-note");
 		// Update the note of the given account
 		Account account = activeVault.getaccount(accountName);
 		account.note = note;
-		activeVault.updateAccount(account);
+		activeVault.writeVault();
 	} else if (args.containsArg("-f")) {
 		std::string filePath = args.getArg("-f");
 		// Update all details of the given account
 		Account account(accountName, filePath);
-		activeVault.updateAccount(account);
+		activeVault.writeVault();
 	} else {
 		// TODO: Error
 	}
@@ -189,16 +189,16 @@ void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault)
 		std::string filePath = args.getArg("-f");
 		// Read the new account from the specified file
 		Account account(accountName, filePath);
-		activeVault.updateAccount(account);
+		activeVault.addAccount(account);
 	} else if (args.containsArg("-un") && args.containsArg("-pw")) {
 		std::string username = args.getArg("-un");
 		std::string password = args.getArg("-pw");
 		// Create a new account with the given username and password
 		Account account(accountName, username, password);
-		activeVault.updateAccount(account);
+		activeVault.addAccount(account);
 	} else {
 		// Create a new account with no details
 		Account account(accountName);
-		activeVault.updateAccount(account);
+		activeVault.addAccount(account);
 	}
 }

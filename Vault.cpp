@@ -2,15 +2,19 @@
 
 #include <tomcrypt.h>
 #include <fstream>
+#include <random>
+#include <cstring>
 
 #define SKEY_LENGTH 32 // symmetric key length in bytes (256 bits)
 
+/**
+	Encrypts and loads into memory the vault located at vaults/vaultName.
+	Aborts the program if the provided vaultKey is incorrect.
+*/
 Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool create=false) 
 : vaultName(vaultName), vaultKey(vaultKey) {
 	std::string filePath = "vaults/" + vaultName;
-	// TODO: Check if the file already exists first
-	// Assume the file doesn't exist for now...
-
+	
 	if (create) {
 		// Check if the given vault exists and create a new vault if it doesn't:
 	} else {
@@ -43,22 +47,21 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 			exit(1);
 		}
 
-
-
 		// Load 32-byte nonce
 		unsigned char nonce[SKEY_LENGTH];
 		fileStream.read(nonce, SKEY_LENGTH);
 
 		// Load remaining bytes (until EOF) into a byte array
 		int ciphertextSize = fileSize - 2*SKEY_LENGTH;
-		unsigned char *ciphertext = new unsigned char[ciphertextSize]; // TODO: delete mallocd buffer later
+		unsigned char *ciphertext = new unsigned char[ciphertextSize];
 		fileStream.read(ciphertext, ciphertextSize);
 		fileStream.close();
 
-		// Prepare a plaintext buffer in which to store the decrypted plaintext:
-		unsigned char *plaintext = new unsigned char[ciphertextSize]; // TODO: delete mallocd buffer later
+		// Allocate a plaintext buffer in which to store the decrypted plaintext:
+		unsigned char *plaintext = new unsigned char[ciphertextSize];
 
 		// Use sha(vaultKey) and nonce to decrypt account list byte array
+		// TODO: Use CTR instead of CBC mode?
 
 		// Initialize symmetric_key object using skey:
 		symmetric_key libtomSkey;
@@ -67,11 +70,8 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		// Compute the number of complete blocks to process:
 		unsigned long completeBlocks = ciphertextSize / SKEY_LENGTH;
 
-		// Compute nonce/IV:
-		unsigned char iv[SKEY_LENGTH];
-		// TODO: Compute random nonce/IV
-
-		int success = cbc_decrypt(ciphertext, plaintext, completeBlocks, iv, libtomSkey);
+		// TODO: Use ciphertext stealing to decrypt plaintext that are not multiples of 32 bytes
+		int success = cbc_decrypt(ciphertext, plaintext, completeBlocks, nonce, libtomSkey);
 		cbc_done(libtomSkey);
 
 		// TODO: Decrypt final partial block using EBC (see libtomcrypt doc)
@@ -79,41 +79,91 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		delete[] ciphertext;
 
 		// Load one account at a time from the decrypted byte array:
-			// Load 4-byte account tag size
-			// Load a-byte account tag
-			// Load 4-byte account username size
-			// Load b-byte account username
-			// Load 4-byte account password size
-			// Load c-byte account password
-			// Load 4-byte account note size
-			// Load d-byte account note
-			// repeat for all accounts
+		unsigned char *plaintextIter = plaintext;
+		unsigned char *plaintextEnd = plaintext + plaintextSize;
+		while (plaintextIter != plaintextEnd) {
+			accounts.push_back(Account(plaintextIter));
+		}
 
 		delete[] plaintext;
 	}
 }
 
+/**
+	Clears all sensitive account data from memory before destroying this object.
+*/
 Vault::~Vault() {
-	// TODO: Clear all account data from memory
+	// Clear all sensitive account data from memory:
+	memset(vaultKey.c_str(), 0, vaultKey.size());
+	for (int i = 0; i < accounts.size(); ++i)
+	{
+		accounts[i].wipeSensitiveData();
+	}
 }
 
-const Account& Vault::getAccount(const std::string &tag) const {
-
+/**
+	Print all Account tags, separated by newlines, to the output stream.
+*/
+void Vault::printTags(std::ostream &outputStream) const
+{
+	std::vector<std::string> tags;
+	for (int i = 0; i < accounts.size(); ++i)
+	{
+		outputStream << accounts[i].tag() << '\n';
+	}
 }
 
-void Vault::updateAccount(Account account) {
+/**
+	Returns a reference to the Account labeled 'tag.'
+	Assumes that an account with the given tag exists.
+*/
+Account& Vault::getAccount(const std::string &tag) const {
+	for (int i = 0; i < accounts.size(); ++i) {
+		if (accounts[i].tag() == tag) {
+			return accounts[i];
+		}
+	}
 
+	// TODO: Throw exception if this line is reached
+	return accounts[0]; // not reached
 }
 
-bool exists(std::string accountTag) {
-
+/**
+	Adds the given Account to the vault.
+	Assumes that an Account with the same tag does not already exist in the vault.
+*/
+void Vault::addAccount(Account account) {
+	accounts[account.tag] = account;
 }
 
-void Vault::write() const {
-	// Create a byte array from list of accounts
-	std::vector<unsigned char> serializedAccountList;
-	// TODO: Serialize Account list into vector
-	unsigned char *plaintext = new unsigned char[serializedAccountList.size()]; // TODO: delete mallocd buffer later
+/**
+	Returns true if an Account with the given tag exists and false otherwise.
+*/
+bool exists(const std::string &tag) {
+	for (int i = 0; i < accounts.size(); ++i) {
+		if (accounts[i].tag() == tag) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+	Encrypts and writes all Accounts in this Vault to disk at vaults/vaultName.
+*/
+void Vault::writeVault() const {
+	// Create a byte array from list of accounts:
+	std::vector<uint8_t> serializedAccountList;
+	std::vector<uint8_t> serializedAccount;
+	for (int i = 0; i < accounts.size(); ++i)
+	{
+		serializedAccount = accounts[i].serialize();
+		serializedAccountList.insert(serializedAccounts.end(), serializedAccount.data(), serializedAccount.data() + serializedAccount.size());
+	}
+
+	size_t plaintextSize = serializedAccountList.size();
+	unsigned char *plaintext = (unsigned char *)serializedAccountList.data();
 
 	// Compute sha512(vaultKey) (skey):
 	unsigned char skey[SKEY_LENGTH];
@@ -128,28 +178,45 @@ void Vault::write() const {
 	sha256_process(&md, skey, SKEY_LENGTH);
 	sha256_done(&md, skeyHash);
 
-	// Compute nonce/IV:
+	// Compute random nonce/IV:
 	unsigned char iv[SKEY_LENGTH];
-	// TODO: Compute random nonce/IV
+	std::random_device rd;
+	std::mt19937 mt(rd());
+	std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF);
+	uint32_t *ivWriter = iv;
+	for (int i = 0; i < SKEY_LENGTH / 4; ++i)
+	{
+		ivWriter[i] = dist(mt);
+	}
 
 	// Use sha(vaultKey) and nonce to encrypt byte array
+	// TODO: Use CTR instead of CBC mode?
 
 	// Initialize symmetric_key object using skey:
 	symmetric_key libtomSkey;
 	cbc_setup(skey, SKEY_LENGTH, 0, &libtomSkey);
 
 	// Compute the number of complete blocks to process:
-	unsigned long completeBlocks = serializedAccountList.size() / SKEY_LENGTH;
+	unsigned long completeBlocks = plaintextSize / SKEY_LENGTH;
 
-	// Initialize buffer in which to store the ciphertext:
-	unsigned char *ciphertext = new unsigned char[serializedAccountList.size()]; // TODO: delete mallocd buffer later
+	// Allocate buffer in which to store the ciphertext:
+	unsigned char *ciphertext = new unsigned char[plaintextSize];
 
+	// TODO: Use ciphertext stealing to encrypt plaintext that are not multiples of 32 bytes
 	int success = cbc_encrypt(plaintext, ciphertext, completeBlocks, iv, libtomSkey);
 	cbc_done(libtomSkey);
 
 	// TODO: Encrypt final partial block using EBC (see libtomcrypt doc)
 
 	// write sha(sha(vaultKey)), nonce, and encrypted byte array to disk under vaults/vaultName
+	std::string filePath = "vaults/" + vaultName;
+	std::ofstream fileStream(filePath);
+	fileStream.write(skeyHash, SKEY_LENGTH);
+	fileStream.write(iv, SKEY_LENGTH);
+	fileStream.write(ciphertext, plaintextSize);
+	fileStream.close();
+
+	delete[] ciphertext;
 }
 
 /**

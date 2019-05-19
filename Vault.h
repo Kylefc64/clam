@@ -5,19 +5,24 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 class Vault {
 public:
 	Vault(const std::string &vaultName, const std::string &vaultKey, bool create);
 	~Vault();
-	const Account& getAccount(const std::string &tag) const;
-	void updateAccount(Account account);
-	bool exists(std::string accountTag);
+	void printTags(std::ostream &outputStream) const;
+	Account& getAccount(const std::string &tag) const;
+	void addAccount(Account account);
+	bool exists(const std::string &tag);
+	void writeVault() const;
 private:
 	std::string vaultName;
 	std::string vaultKey;
+
+	// Do not store Accounts as a map for security reasons...
 	std::vector<Account> accounts; // decrypted accounts
-	void write() const;
+
 	bool contentsEqual(const unsigned char *buffer1, const unsigned char *buffer2, uint32_t size) const;
 }
 
