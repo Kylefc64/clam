@@ -5,8 +5,6 @@
 #include <random>
 #include <cstring>
 
-#define SKEY_LENGTH 32 // symmetric key length in bytes (256 bits)
-
 /**
 	Encrypts and loads into memory the vault located at vaults/vaultName.
 	Aborts the program if the provided vaultKey is incorrect.
@@ -24,9 +22,13 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		int fileSize = fileStream.tellg();
 		fileStream.seekg(0, fileStream.beg());
 
+		// -----
+		// TODO: Move key hash checking outside of Vault class
 		// Load 32-byte encryption key hash hash
 		unsigned char storedSkeyHash[SKEY_LENGTH];
 		fileStream.read(storedSkeyHash, SKEY_LENGTH);
+		// -----
+
 		// Check if sha(sha(vaultKey)) equals sha(sha(encr key)) and proceed if equal
 
 		// Compute sha512(vaultKey) (skey):
@@ -36,6 +38,8 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		sha256_process(&md, vaultey.c_str(), vaultKey.size());
 		sha256_done(&md, skey);
 
+		// -----
+		// TODO: Move key hash checking outside of Vault class
 		// Compute sha512(skey):
 		unsigned char skeyHash[SKEY_LENGTH];
 		sha256_init(&md);
@@ -46,6 +50,7 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 			std::cout << "Error: Invalid vault key." << std::endl;
 			exit(1);
 		}
+		// -----
 
 		// Load 32-byte nonce
 		unsigned char nonce[SKEY_LENGTH];
@@ -172,11 +177,14 @@ void Vault::writeVault() const {
 	sha256_process(&md, vaultey.c_str(), vaultKey.size());
 	sha256_done(&md, skey);
 
+	// -----
+	// TODO: Move key checking outside of Vault class:
 	// Compute sha512(skey):
 	unsigned char skeyHash[SKEY_LENGTH];
 	sha256_init(&md);
 	sha256_process(&md, skey, SKEY_LENGTH);
 	sha256_done(&md, skeyHash);
+	// -----
 
 	// Compute random nonce/IV:
 	unsigned char iv[SKEY_LENGTH];
@@ -211,12 +219,16 @@ void Vault::writeVault() const {
 	// write sha(sha(vaultKey)), nonce, and encrypted byte array to disk under vaults/vaultName
 	std::string filePath = "vaults/" + vaultName;
 	std::ofstream fileStream(filePath);
-	fileStream.write(skeyHash, SKEY_LENGTH);
+	fileStream.write(skeyHash, SKEY_LENGTH); // TODO: Move key checking outside of Vault class
 	fileStream.write(iv, SKEY_LENGTH);
 	fileStream.write(ciphertext, plaintextSize);
 	fileStream.close();
 
 	delete[] ciphertext;
+}
+
+void Vault::updateKey(const std::string &newKey) {
+	vaultKey = newKey
 }
 
 /**

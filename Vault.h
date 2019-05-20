@@ -7,6 +7,8 @@
 #include <vector>
 #include <iostream>
 
+#define SKEY_LENGTH 32 // symmetric key length in bytes (256 bits)
+
 class Vault {
 public:
 	Vault(const std::string &vaultName, const std::string &vaultKey, bool create);
@@ -16,6 +18,7 @@ public:
 	void addAccount(Account account);
 	bool exists(const std::string &tag);
 	void writeVault() const;
+	void updateKey(const std::string &newKey);
 private:
 	std::string vaultName;
 	std::string vaultKey;

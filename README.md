@@ -8,7 +8,7 @@ A light, terminal-based application for securely managing all of your account pa
     * Creates a new vault with the given key
 * pml -v update -k <vault's old key> -knew <vault's new key>
     * Updates the active vault's key to the given new key
-* pml -v switch -n <name of vault to switch to>
+* pml -v switch -n <name of vault to switch to> -k <vault's key>
     * Switches the active vault to the given vault
 * pml -v delete -n <name of vault to delete (cannot be active vault)> -k <vault's key>
     * Deletes the specified vault

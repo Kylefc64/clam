@@ -1,12 +1,25 @@
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <tomcrypt.h>
+
 #include <iostream>
+#include <fstream>
+#include <string>
+#include <cstdio>
+#include <vector>
 
 #include "CommandLineParser.h"
 #include "Vault.h"
-#include <sys/stah.h>
-#include <sys/types.h>
-#include <string>
 
-std::string initialize();
+struct VaultInfo {
+	unsigned char vaultKeyHash[SKEY_LENGTH]; // vaultKeyHash = sha256(sha256(key) xor vaultKeyNonce)
+	unsigned char vaultKeyNonce[SKEY_LENGTH];
+	std::string vaultName;
+
+}
+
+std::string initialize(std::vector<VaultInfo> &vaultMetaData);
+void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
 void processVaultCommand(const CommandLineParser& args, const std::string &activeVaultName);
 void processAccountCommand(const CommandLineParser& args, const std::string &activeVaultName);
 void processAccountPrintCommand(const CommandLineParser& args, const Vault &activeVault);
@@ -15,7 +28,8 @@ void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVau
 void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault);
 
 int main(int argc, char *argv[]) {
-	std::string activeVaultName = initialize();
+	std::vector<VaultInfo> vaultMetaData;
+	std::string activeVaultName = initialize(vaultMetaData);
 
 	CommandLineParser cmdLineParser(argc, argv);
 	if (cmdLineParser.containsArg("-v")) {
@@ -27,18 +41,50 @@ int main(int argc, char *argv[]) {
 	}
 }
 
-std::string initialize() {
-	struct stat info;
-	if ((stat("meta", &info) != 0) || (info.st_mode & S_IFDIR)) {
-		// Create meta dir/file and vaults dir & default vault file
-		system("mkdir meta/");
-		//system("touch meta/meta");
+void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
+	ifstream fileStream("meta/meta");
+
+	uint32_t numVaults;
+	fileStream.read(&numVaults, sizeof(numVaults));
+
+	VaultInfo vaultInfo;
+
+	for (int i = 0; i < numVaults; ++i) {
+		fileStream.read(vaultInfo.vaultKeyHash, SKEY_LENGTH);
+		fileStream.read(vaultInfo.vaultKeyNonce, SKEY_LENGTH);
+		std::getline(fileStream, vaultInfo.vaultName);
+		vaultMetaData.push_back(vaultInfo);
 	}
 
-	if ((stat("vaults", &info) != 0) || (info.st_mode & S_IFDIR)) {
-		// Create meta dir/file and vaults dir & default vault file
+	return vaultMetaData;
+}
+
+/**
+	Returns the name of the active vault if it exists, or "" if no vaults
+	have been created yet. Creates meta and vaults directories if
+	they do not yet exist.
+*/
+std::string initialize(std::vector<VaultInfo> &vaultMetaData) {
+	struct stat info;
+	if (((stat("meta", &info) != 0) || (info.st_mode & S_IFDIR)) ||
+		((stat("vaults", &info) != 0) || (info.st_mode & S_IFDIR))) {
+		// meta or vaults directories do not exist:
+		
+		// Create empty meta and vaults directories:
+		system("mkdir meta/");
 		system("mkdir vaults/");
+		//system("touch meta/meta");
 		//system("touch vaults/default");
+		return "";
+	} else if ((stat("meta/meta", &info) != 0) || (info.st_mode & S_IFDIR)) {
+		// meta/meta file does not exist:
+		return "";
+	} else {
+		// Read meta/meta file:
+		readVaultMetaData(vaultMetaData);
+
+		// Assume that there never exists a meta/meta file containing no data or with 0 length:
+		return vaultMetaData[0].vaultName; // the active vault is first
 	}
 }
 
@@ -48,16 +94,76 @@ std::string initialize() {
 void processVaultCommand(const CommandLineParser& args, const std::string &activeVaultName)
 {
 	std::string metaCommand = args.getArg("-v");
+	if (metaCommand == "list") {
+		// TODO: List all vaults stored in the meta/meta file
+		return;
+	}
+
+	std::string vaultKey = args.getArg("-k");
+	if (vaultKey == "") {
+		std::cout << "Error: Vault key must be provided to make changes to a vault." << std::endl;
+		return;
+	}
+
 	if (metaCommand == "add") {
+		// Create a new vault:
+		std::string newVaultName = args.getArg("-n");
 
+		// Error if the vault already exists:
+		if (!((stat("vaults/" + newVaultName, &info) != 0) || (info.st_mode & S_IFDIR))) {
+			std::cout << "Error: A vault with the given name already exists." << std::endl;
+			return;
+		}
+
+		Vault newVault(newVaultName, vaultKey, true);
+		newVault.writeVault();
+
+		// Switch active vault to the new vault if there is no active vault (activeVaultName == ""):
+		if (activeVaultName == "") {
+			std::ofstream fileStream("meta/meta");
+			fileStream.write(newVaultName.c_str(), newVaultName.size());
+			fileStream.write("\n", 1);
+			fileStream.close();
+		} else {
+			// TODO: Append new vault name to end of meta/meta
+		}
 	} else if (metaCommand == "update") {
+		// Error if there is no active vault:
+		if (activeVaultName == "") {
+			std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
+			return;
+		}
 
+		// TODO: Verify that vaultKey is correct and report error and exit if not
+
+		std::string newVaultKey = args.getArg("-knew");
+		Vault activeVault(vaultName, vaultKey);
+		activeVault.updateKey(newVaultKey);
+		activeVault.writeVault();
 	} else if (metaCommand == "switch") {
+		// Error if there is no active vault:
+		if (activeVaultName == "") {
+			std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
+			return;
+		}
+
+		std::string vaultToSwitchToName = args.getArg("-n");
+		// TODO: In the meta/meta file, swap the active vault's name with the name of the vault to switch to:
 
 	} else if (metaCommand == "delete") {
+		// Error if there is no active vault:
+		if (activeVaultName == "") {
+			std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
+			return;
+		}
 
-	} else if (metaCommand == "list") {
+		// TODO: Verify that vaultKey is correct and report error and exit if not
 
+		std::string vaultToDeleteName = args.getArg("-n");
+		// TODO: Remove the vault to delete's name from the meta/meta file
+
+		// Remove the vault file in the 'vaults' directory:
+		std::remove("vaults/" + vaultToDeleteName);
 	} else {
 		std::cout << "Error: Invalid vault command\n"
 			<< "Valid commands are: add, update, switch, delete, list" << std::endl;
@@ -70,9 +176,14 @@ void processVaultCommand(const CommandLineParser& args, const std::string &activ
 */
 void processAccountCommand(const CommandLineParser& args, const std::string &activeVaultName)
 {
+	if (activeVaultName == "") {
+		std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
+		return;
+	}
+
 	std::string vaultKey = arg.getArg("-k");
 	if (vaultKey == "") {
-		std::cout << "Error: Vault key must be provided to access the active vault's accounts" << std::endl;
+		std::cout << "Error: Vault key must be provided to access the active vault's accounts." << std::endl;
 		return;
 	}
 
