@@ -15,13 +15,12 @@ struct VaultInfo {
 	unsigned char vaultKeyHash[SKEY_LENGTH]; // vaultKeyHash = sha256(sha256(key) + vaultKeyNonce)
 	unsigned char vaultKeyNonce[SKEY_LENGTH];
 	std::string vaultName;
-
-}
+};
 
 std::string initialize(std::vector<VaultInfo> &vaultMetaData);
 void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
-void processVaultCommand(const CommandLineParser& args, const std::string &activeVaultName);
-void processAccountCommand(const CommandLineParser& args, const std::string &activeVaultName);
+void processVaultCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData);
+void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData);
 void processAccountPrintCommand(const CommandLineParser& args, const Vault &activeVault);
 void processAccountClipCommand(const CommandLineParser& args, const Vault &activeVault);
 void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault);
@@ -41,16 +40,16 @@ int main(int argc, char *argv[]) {
 }
 
 void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
-	ifstream fileStream("meta/meta");
+	std::ifstream fileStream("meta/meta");
 
 	uint32_t numVaults;
-	fileStream.read(&numVaults, sizeof(numVaults));
+	fileStream.read((char *)&numVaults, sizeof(numVaults));
 
 	VaultInfo vaultInfo;
 
 	for (int i = 0; i < numVaults; ++i) {
-		fileStream.read(vaultInfo.vaultKeyHash, SKEY_LENGTH);
-		fileStream.read(vaultInfo.vaultKeyNonce, SKEY_LENGTH);
+		fileStream.read((char *)vaultInfo.vaultKeyHash, SKEY_LENGTH);
+		fileStream.read((char *)vaultInfo.vaultKeyNonce, SKEY_LENGTH);
 		std::getline(fileStream, vaultInfo.vaultName);
 		vaultMetaData.push_back(vaultInfo);
 	}
@@ -88,7 +87,7 @@ std::string initialize(std::vector<VaultInfo> &vaultMetaData) {
 /**
 	Process a command that pertains to an entire vault
 */
-void processVaultCommand(const CommandLineParser& args, const std::string &activeVaultName, const std::string &activeVaultName)
+void processVaultCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData)
 {
 	std::string activeVaultHash = vaultMetaData[0].vaultKeyHash;
 	std::string activeVaultSalt = vaultMetaData[0].vaultKeyNonce;
@@ -135,7 +134,7 @@ void processVaultCommand(const CommandLineParser& args, const std::string &activ
 		std::random_device rd;
 		std::mt19937 mt(rd());
 		std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF);
-		uint32_t *saltWriter = salt;
+		uint32_t *saltWriter = (uint32_t *)salt;
 		for (int i = 0; i < SKEY_LENGTH / 4; ++i)
 		{
 			saltWriter[i] = dist(mt);
@@ -223,10 +222,9 @@ void processVaultCommand(const CommandLineParser& args, const std::string &activ
 /**
 	Process a command that pertains to some account (or accounts) in the currently active vault
 */
-// TODO:fix input parameters
-void processAccountCommand(const CommandLineParser& args, const std::string &activeVaultName)
+void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData)
 {
-	if (activeVaultName == "") {
+	if (vaultMetaData.empty()) {
 		std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
 		return;
 	}
@@ -266,16 +264,16 @@ void processAccountPrintCommand(const CommandLineParser& args, const Vault &acti
 
 	std::string accountName = args.getArg("-n");
 	if (args.containsArg("-un")) {
-		std::cout << activeVault.getAccount(accountName).username() << std::endl;
+		std::cout << activeVault.getAccount(accountName).getUsername() << std::endl;
 	} else if (args.containsArg("-pw")) {
-		std::cout << activeVault.getAccount(accountName).password() << std::endl;
+		std::cout << activeVault.getAccount(accountName).getPassword() << std::endl;
 	} else if (args.containsArg("-note")) {
-		std::cout << activeVault.getAccount(accountName).note() << std::endl;
+		std::cout << activeVault.getAccount(accountName).getNote() << std::endl;
 	} else {
 		const Account account = activeVault.getAccount(accountName);
-		std::cout << "un=" << account.username() << '\n'
-			<< "pw=" << account.password() << '\n'
-			<< "note=" << account.note() << std::endl;
+		std::cout << "un=" << account.getUsername() << '\n'
+			<< "pw=" << account.getPassword() << '\n'
+			<< "note=" << account.getNote() << std::endl;
 	}
 }
 

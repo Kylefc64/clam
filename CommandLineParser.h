@@ -7,8 +7,8 @@
 class CommandLineParser {
 public:
 	CommandLineParser(int argc, char **argv);
-	bool containsArg(const std::string& arg);
-	std::string getArg(const std::string& arg);
+	bool containsArg(const std::string& arg) const;
+	std::string getArg(const std::string& arg) const;
 private:
 	std::map<std::string, std::string> argMap;
 };

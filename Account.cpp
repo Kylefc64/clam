@@ -70,31 +70,31 @@ Account::Account(unsigned char **serializedAccount)
 	*serializedAccount += size; // advance past note
 }
 
-std::string Account::tag() const {
+std::string Account::getTag() const {
 	return tag;
 }
 
-std::string Account::username() const {
+std::string Account::getUsername() const {
 	return username;
 }
 
-std::string Account::password() const {
+std::string Account::getPassword() const {
 	return password;
 }
 
-std::string Account::note() const {
+std::string Account::getNote() const {
 	return note;
 }
 
-void Account::username(const std::string &un) {
+void Account::setUsername(const std::string &un) {
 	username = un;
 }
 
-void Account::password(const std::string &pw) {
+void Account::setPassword(const std::string &pw) {
 	password = pw;
 }
 
-void Account::note(const std::string &n) {
+void Account::setNote(const std::string &n) {
 	note = n;
 }
 
