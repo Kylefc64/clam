@@ -26,7 +26,6 @@ private:
 	// Do not store Accounts as a map for security reasons...
 	std::vector<Account> accounts; // decrypted accounts
 
-	bool contentsEqual(const unsigned char *buffer1, const unsigned char *buffer2, uint32_t size) const;
 };
 
 #endif
