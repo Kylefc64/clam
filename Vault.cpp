@@ -6,30 +6,28 @@
 #include <cstring>
 
 /**
-	Encrypts and loads into memory the vault located at vaults/vaultName.
-	Aborts the program if the provided vaultKey is incorrect.
+	Encrypts and loads into memory the vault located at vaults/vaultName if create is false.
+	Creates and writes to disk a new Vault at vaults/vaultName if create is true.
+	Assumes that the Vault key is correct, that if create is false a Vault with the given
+	name exists, and that if create is true a Vault with the given name does not exist.
 */
-Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool create=false) 
+Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool create=false)
 : vaultName(vaultName), vaultKey(vaultKey) {
 	std::string filePath = "vaults/" + vaultName;
+	std::ifstream fileStream(filePath);
 	
 	if (create) {
-		// Check if the given vault exists and create a new vault if it doesn't:
+		// Create a new empty vault with the given name (assume a vault with the given name does not exist):
+		// New vaults will be empty
 	} else {
-		// Load the vault with the given name if it exists:
-		std::ifstream fileStream(filePath);
+		// Load the vault with the given name (assume it exists):
 		fileStream.seekg(0, fileStream.end());
 		int fileSize = fileStream.tellg();
 		fileStream.seekg(0, fileStream.beg());
-
-		// -----
-		// TODO: Move key hash checking outside of Vault class
-		// Load 32-byte encryption key hash hash
-		unsigned char storedSkeyHash[SKEY_LENGTH];
-		fileStream.read(storedSkeyHash, SKEY_LENGTH);
-		// -----
-
-		// Check if sha(sha(vaultKey)) equals sha(sha(encr key)) and proceed if equal
+		if (fileSize == 0) {
+			// Do not try to decrypt and load accounts from an empty vault:
+			return;
+		}
 
 		// Compute sha512(vaultKey) (skey):
 		unsigned char skey[SKEY_LENGTH];
@@ -38,50 +36,50 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		sha256_process(&md, vaultey.c_str(), vaultKey.size());
 		sha256_done(&md, skey);
 
-		// -----
-		// TODO: Move key hash checking outside of Vault class
-		// Compute sha512(skey):
-		unsigned char skeyHash[SKEY_LENGTH];
-		sha256_init(&md);
-		sha256_process(&md, skey, SKEY_LENGTH);
-		sha256_done(&md, skeyHash);
-
-		if (!contentsEqual(skeyHash, storedSkeyHash, SKEY_LENGTH)) {
-			std::cout << "Error: Invalid vault key." << std::endl;
-			exit(1);
-		}
-		// -----
-
-		// Load 32-byte nonce
-		unsigned char nonce[SKEY_LENGTH];
-		fileStream.read(nonce, SKEY_LENGTH);
+		// Load 32-byte iv
+		unsigned char iv[SKEY_LENGTH];
+		fileStream.read(iv, SKEY_LENGTH);
 
 		// Load remaining bytes (until EOF) into a byte array
 		int ciphertextSize = fileSize - 2*SKEY_LENGTH;
 		unsigned char *ciphertext = new unsigned char[ciphertextSize];
 		fileStream.read(ciphertext, ciphertextSize);
-		fileStream.close();
 
 		// Allocate a plaintext buffer in which to store the decrypted plaintext:
 		unsigned char *plaintext = new unsigned char[ciphertextSize];
 
-		// Use sha(vaultKey) and nonce to decrypt account list byte array
-		// TODO: Use CTR instead of CBC mode?
+		// Use sha(vaultKey) and iv to decrypt account list byte array
+		// Register twofish cipher:
+		if (register_cipher(&twofish_desc) == -1) {
+			std::cout << "Error registering cipher.\n" << std::endl;
+			return -1;
+		}
 
-		// Initialize symmetric_key object using skey:
-		symmetric_key libtomSkey;
-		cbc_setup(skey, SKEY_LENGTH, 0, &libtomSkey);
+		// Initialize CTR cipher:
+		int err;
+		symmetric_CTR ctr;
+		if ((err = ctr_start(
+			find_cipher("twofish"), /* index of desired cipher */
+			iv, /* the initial vector */
+			skey, /* the secret key */
+			SKEY_LENGTH, /* length of secret key (16 bytes) */
+			0, /* 0 == default # of rounds */
+			CTR_COUNTER_LITTLE_ENDIAN, /* Little endian counter */
+			&ctr) /* where to store the CTR state */
+			) != CRYPT_OK) {
+			std::cout << "ctr_start error: " << error_to_string(err) << std::endl;
+			return -1;
+		}
 
-		// Compute the number of complete blocks to process:
-		unsigned long completeBlocks = ciphertextSize / SKEY_LENGTH;
-
-		// TODO: Use ciphertext stealing to decrypt plaintext that are not multiples of 32 bytes
-		int success = cbc_decrypt(ciphertext, plaintext, completeBlocks, nonce, libtomSkey);
-		cbc_done(libtomSkey);
-
-		// TODO: Decrypt final partial block using EBC (see libtomcrypt doc)
-
-		delete[] ciphertext;
+		// Decrypt plaintext using CTR cipher:
+		if ((err = ctr_encrypt(ciphertext, /* ciphertext */
+			plaintext, /* plaintext */
+			plaintextSize, /* length of plaintext pt */
+			&ctr) /* CTR state */
+			) != CRYPT_OK) {
+			std::cout << "ctr_decrypt error: " << error_to_string(err) << std::endl;
+			return -1;
+		}
 
 		// Load one account at a time from the decrypted byte array:
 		unsigned char *plaintextIter = plaintext;
@@ -90,8 +88,15 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 			accounts.push_back(Account(plaintextIter));
 		}
 
+		// Clean up cipher and memory:
+		ctr_done(&ctr);
+		zeromem(&ctr, sizeof(ctr));
+		zeromem(skey, SKEY_LENGTH);
+		zeromem(plaintext, plaintextSize);
 		delete[] plaintext;
+		delete[] ciphertext;
 	}
+	fileStream.close();
 }
 
 /**
@@ -177,53 +182,64 @@ void Vault::writeVault() const {
 	sha256_process(&md, vaultey.c_str(), vaultKey.size());
 	sha256_done(&md, skey);
 
-	// -----
-	// TODO: Move key checking outside of Vault class:
-	// Compute sha512(skey):
-	unsigned char skeyHash[SKEY_LENGTH];
-	sha256_init(&md);
-	sha256_process(&md, skey, SKEY_LENGTH);
-	sha256_done(&md, skeyHash);
-	// -----
-
-	// Compute random nonce/IV:
+	// Compute random iv/nonce:
 	unsigned char iv[SKEY_LENGTH];
 	std::random_device rd;
 	std::mt19937 mt(rd());
 	std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF);
 	uint32_t *ivWriter = iv;
-	for (int i = 0; i < SKEY_LENGTH / 4; ++i)
-	{
+	for (int i = 0; i < SKEY_LENGTH / 4; ++i) {
 		ivWriter[i] = dist(mt);
 	}
 
-	// Use sha(vaultKey) and nonce to encrypt byte array
-	// TODO: Use CTR instead of CBC mode?
+	// Use sha(vaultKey) and iv to encrypt byte array
 
-	// Initialize symmetric_key object using skey:
-	symmetric_key libtomSkey;
-	cbc_setup(skey, SKEY_LENGTH, 0, &libtomSkey);
+	// Register twofish cipher:
+	if (register_cipher(&twofish_desc) == -1) {
+		std::cout << "Error registering cipher.\n" << std::endl;
+		return -1;
+	}
 
-	// Compute the number of complete blocks to process:
-	unsigned long completeBlocks = plaintextSize / SKEY_LENGTH;
+	// Initialize CTR cipher:
+	int err;
+	symmetric_CTR ctr;
+	if ((err = ctr_start(
+		find_cipher("twofish"), /* index of desired cipher */
+		iv, /* the initial vector */
+		skey, /* the secret key */
+		SKEY_LENGTH, /* length of secret key (16 bytes) */
+		0, /* 0 == default # of rounds */
+		CTR_COUNTER_LITTLE_ENDIAN, /* Little endian counter */
+		&ctr) /* where to store the CTR state */
+		) != CRYPT_OK) {
+		std::cout << "ctr_start error: " << error_to_string(err) << std::endl;
+		return -1;
+	}
 
 	// Allocate buffer in which to store the ciphertext:
 	unsigned char *ciphertext = new unsigned char[plaintextSize];
 
-	// TODO: Use ciphertext stealing to encrypt plaintext that are not multiples of 32 bytes
-	int success = cbc_encrypt(plaintext, ciphertext, completeBlocks, iv, libtomSkey);
-	cbc_done(libtomSkey);
+	// Encrypt plaintext using CTR cipher:
+	if ((err = ctr_encrypt(plaintext, /* plaintext */
+		ciphertext, /* ciphertext */
+		plaintextSize, /* length of plaintext pt */
+		&ctr) /* CTR state */
+		) != CRYPT_OK) {
+		std::cout << "ctr_encrypt error: " << error_to_string(err) << std::endl;
+		return -1;
+	}
 
-	// TODO: Encrypt final partial block using EBC (see libtomcrypt doc)
-
-	// write sha(sha(vaultKey)), nonce, and encrypted byte array to disk under vaults/vaultName
+	// write sha(sha(vaultKey)), iv, and encrypted byte array to disk under vaults/vaultName
 	std::string filePath = "vaults/" + vaultName;
 	std::ofstream fileStream(filePath);
-	fileStream.write(skeyHash, SKEY_LENGTH); // TODO: Move key checking outside of Vault class
 	fileStream.write(iv, SKEY_LENGTH);
 	fileStream.write(ciphertext, plaintextSize);
 	fileStream.close();
 
+	// Clean up cipher and memory:
+	ctr_done(&ctr);
+	zeromem(&ctr, sizeof(ctr));
+	zeromem(skey, SKEY_LENGTH);
 	delete[] ciphertext;
 }
 
