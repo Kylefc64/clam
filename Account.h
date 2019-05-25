@@ -9,7 +9,7 @@ public:
 	Account(const std::string &tag);
 	Account(const std::string &tag, const std::string &filePath);
 	Account(const std::string &tag, const std::string &un, const std::string &pw);
-	Account(const unsigned char *serializedAccount);
+	Account(unsigned char **serializedAccount);
 	std::string getTag() const;
 	std::string getUsername() const;
 	std::string getPassword() const;

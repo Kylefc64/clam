@@ -33,17 +33,17 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		unsigned char skey[SKEY_LENGTH];
 		hash_state md;
 		sha256_init(&md);
-		sha256_process(&md, vaultey.c_str(), vaultKey.size());
+		sha256_process(&md, (unsigned char *)vaultKey.c_str(), vaultKey.size());
 		sha256_done(&md, skey);
 
 		// Load 32-byte iv
 		unsigned char iv[SKEY_LENGTH];
-		fileStream.read(iv, SKEY_LENGTH);
+		fileStream.read((char *)iv, SKEY_LENGTH);
 
 		// Load remaining bytes (until EOF) into a byte array
 		int ciphertextSize = fileSize - 2*SKEY_LENGTH;
 		unsigned char *ciphertext = new unsigned char[ciphertextSize];
-		fileStream.read(ciphertext, ciphertextSize);
+		fileStream.read((char *)ciphertext, ciphertextSize);
 
 		// Allocate a plaintext buffer in which to store the decrypted plaintext:
 		unsigned char *plaintext = new unsigned char[ciphertextSize];
@@ -52,7 +52,7 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		// Register twofish cipher:
 		if (register_cipher(&twofish_desc) == -1) {
 			std::cout << "Error registering cipher.\n" << std::endl;
-			return -1;
+			exit(1);
 		}
 
 		// Initialize CTR cipher:
@@ -68,31 +68,31 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 			&ctr) /* where to store the CTR state */
 			) != CRYPT_OK) {
 			std::cout << "ctr_start error: " << error_to_string(err) << std::endl;
-			return -1;
+			exit(1);
 		}
 
 		// Decrypt plaintext using CTR cipher:
 		if ((err = ctr_encrypt(ciphertext, /* ciphertext */
 			plaintext, /* plaintext */
-			plaintextSize, /* length of plaintext pt */
+			ciphertextSize, /* length of plaintext pt */
 			&ctr) /* CTR state */
 			) != CRYPT_OK) {
 			std::cout << "ctr_decrypt error: " << error_to_string(err) << std::endl;
-			return -1;
+			exit(1);
 		}
 
 		// Load one account at a time from the decrypted byte array:
 		unsigned char *plaintextIter = plaintext;
-		unsigned char *plaintextEnd = plaintext + plaintextSize;
+		unsigned char *plaintextEnd = plaintext + ciphertextSize;
 		while (plaintextIter != plaintextEnd) {
-			accounts.push_back(Account(plaintextIter));
+			accounts.push_back(Account(&plaintextIter));
 		}
 
 		// Clean up cipher and memory:
 		ctr_done(&ctr);
 		zeromem(&ctr, sizeof(ctr));
 		zeromem(skey, SKEY_LENGTH);
-		zeromem(plaintext, plaintextSize);
+		zeromem(plaintext, ciphertextSize);
 		delete[] plaintext;
 		delete[] ciphertext;
 	}
@@ -104,7 +104,7 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 */
 Vault::~Vault() {
 	// Clear all sensitive account data from memory:
-	memset(vaultKey.c_str(), 0, vaultKey.size());
+	memset((unsigned char *)vaultKey.c_str(), 0, vaultKey.size());
 	for (int i = 0; i < accounts.size(); ++i)
 	{
 		accounts[i].wipeSensitiveData();
@@ -119,7 +119,7 @@ void Vault::printTags(std::ostream &outputStream) const
 	std::vector<std::string> tags;
 	for (int i = 0; i < accounts.size(); ++i)
 	{
-		outputStream << accounts[i].tag() << '\n';
+		outputStream << accounts[i].getTag() << '\n';
 	}
 }
 
@@ -129,7 +129,7 @@ void Vault::printTags(std::ostream &outputStream) const
 */
 Account& Vault::getAccount(const std::string &tag) const {
 	for (int i = 0; i < accounts.size(); ++i) {
-		if (accounts[i].tag() == tag) {
+		if (accounts[i].getTag() == tag) {
 			return accounts[i];
 		}
 	}
@@ -143,15 +143,15 @@ Account& Vault::getAccount(const std::string &tag) const {
 	Assumes that an Account with the same tag does not already exist in the vault.
 */
 void Vault::addAccount(Account account) {
-	accounts[account.tag] = account;
+	accounts.push_back(account);
 }
 
 /**
 	Returns true if an Account with the given tag exists and false otherwise.
 */
-bool exists(const std::string &tag) {
+bool Vault::exists(const std::string &tag) {
 	for (int i = 0; i < accounts.size(); ++i) {
-		if (accounts[i].tag() == tag) {
+		if (accounts[i].getTag() == tag) {
 			return true;
 		}
 	}
@@ -169,7 +169,7 @@ void Vault::writeVault() const {
 	for (int i = 0; i < accounts.size(); ++i)
 	{
 		serializedAccount = accounts[i].serialize();
-		serializedAccountList.insert(serializedAccounts.end(), serializedAccount.data(), serializedAccount.data() + serializedAccount.size());
+		serializedAccountList.insert(serializedAccountList.end(), serializedAccount.data(), serializedAccount.data() + serializedAccount.size());
 	}
 
 	size_t plaintextSize = serializedAccountList.size();
@@ -179,7 +179,7 @@ void Vault::writeVault() const {
 	unsigned char skey[SKEY_LENGTH];
 	hash_state md;
 	sha256_init(&md);
-	sha256_process(&md, vaultey.c_str(), vaultKey.size());
+	sha256_process(&md, (unsigned char *)vaultKey.c_str(), vaultKey.size());
 	sha256_done(&md, skey);
 
 	// Compute random iv/nonce:
@@ -187,7 +187,7 @@ void Vault::writeVault() const {
 	std::random_device rd;
 	std::mt19937 mt(rd());
 	std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF);
-	uint32_t *ivWriter = iv;
+	uint32_t *ivWriter = (uint32_t *)iv;
 	for (int i = 0; i < SKEY_LENGTH / 4; ++i) {
 		ivWriter[i] = dist(mt);
 	}
@@ -197,7 +197,7 @@ void Vault::writeVault() const {
 	// Register twofish cipher:
 	if (register_cipher(&twofish_desc) == -1) {
 		std::cout << "Error registering cipher.\n" << std::endl;
-		return -1;
+		exit(1);
 	}
 
 	// Initialize CTR cipher:
@@ -213,7 +213,7 @@ void Vault::writeVault() const {
 		&ctr) /* where to store the CTR state */
 		) != CRYPT_OK) {
 		std::cout << "ctr_start error: " << error_to_string(err) << std::endl;
-		return -1;
+		exit(1);
 	}
 
 	// Allocate buffer in which to store the ciphertext:
@@ -226,14 +226,14 @@ void Vault::writeVault() const {
 		&ctr) /* CTR state */
 		) != CRYPT_OK) {
 		std::cout << "ctr_encrypt error: " << error_to_string(err) << std::endl;
-		return -1;
+		exit(1);
 	}
 
 	// write sha(sha(vaultKey)), iv, and encrypted byte array to disk under vaults/vaultName
 	std::string filePath = "vaults/" + vaultName;
 	std::ofstream fileStream(filePath);
-	fileStream.write(iv, SKEY_LENGTH);
-	fileStream.write(ciphertext, plaintextSize);
+	fileStream.write((char *)iv, SKEY_LENGTH);
+	fileStream.write((char *)ciphertext, plaintextSize);
 	fileStream.close();
 
 	// Clean up cipher and memory:
@@ -244,18 +244,5 @@ void Vault::writeVault() const {
 }
 
 void Vault::updateKey(const std::string &newKey) {
-	vaultKey = newKey
-}
-
-/**
-	Returns true if the contents of buffer 1 are equal to the contents of buffer 2 and false otherwise.
-	Assumes that sizeof(buffer1) == sizeof(buffer2).
-*/
-bool Vault::contentsEqual(const unsigned char *buffer1, const unsigned char *buffer2, uint32_t size) const {
-	for (int i = 0; i < size; ++i) {
-		if (buffer1[i] != buffer2[i]) {
-			return false;
-		}
-	}
-	return true;
+	vaultKey = newKey;
 }
