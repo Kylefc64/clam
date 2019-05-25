@@ -12,7 +12,7 @@
 #include "Vault.h"
 
 struct VaultInfo {
-	unsigned char vaultKeyHash[SKEY_LENGTH]; // vaultKeyHash = sha256(sha256(key) xor vaultKeyNonce)
+	unsigned char vaultKeyHash[SKEY_LENGTH]; // vaultKeyHash = sha256(sha256(key) + vaultKeyNonce)
 	unsigned char vaultKeyNonce[SKEY_LENGTH];
 	std::string vaultName;
 
@@ -29,15 +29,14 @@ void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault)
 
 int main(int argc, char *argv[]) {
 	std::vector<VaultInfo> vaultMetaData;
-	std::string activeVaultName = initialize(vaultMetaData);
 
 	CommandLineParser cmdLineParser(argc, argv);
 	if (cmdLineParser.containsArg("-v")) {
 		// This is a vault command
-		processVaultCommand(cmdLineParser, activeVaultName);
+		processVaultCommand(cmdLineParser, vaultMetaData);
 	} else {
 		// This is a command that pertains to some account (or accounts) in the currently active vault
-		processAccountCommand(cmdLineParser, activeVaultName);
+		processAccountCommand(cmdLineParser, vaultMetaData);
 	}
 }
 
@@ -55,8 +54,6 @@ void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
 		std::getline(fileStream, vaultInfo.vaultName);
 		vaultMetaData.push_back(vaultInfo);
 	}
-
-	return vaultMetaData;
 }
 
 /**
@@ -83,19 +80,32 @@ std::string initialize(std::vector<VaultInfo> &vaultMetaData) {
 		// Read meta/meta file:
 		readVaultMetaData(vaultMetaData);
 
-		// Assume that there never exists a meta/meta file containing no data or with 0 length:
-		return vaultMetaData[0].vaultName; // the active vault is first
+		// // Assume that there never exists a meta/meta file containing no data or with 0 length:
+		// return vaultMetaData[0].vaultName; // the active vault is first
 	}
 }
 
 /**
 	Process a command that pertains to an entire vault
 */
-void processVaultCommand(const CommandLineParser& args, const std::string &activeVaultName)
+void processVaultCommand(const CommandLineParser& args, const std::string &activeVaultName, const std::string &activeVaultName)
 {
+	std::string activeVaultHash = vaultMetaData[0].vaultKeyHash;
+	std::string activeVaultSalt = vaultMetaData[0].vaultKeyNonce;
+	std::string activeVaultName = vaultMetaData[0].vaultName;
 	std::string metaCommand = args.getArg("-v");
 	if (metaCommand == "list") {
-		// TODO: List all vaults stored in the meta/meta file
+		// Check that vaultMetaData is not empty
+		if (vaultMetaData.empty()) {
+			std::cout << "Error: vaultMetaData is empty" << std::endl;
+		}
+		else {
+			// Skip the first one when listing because first one is a duplicate for the active vault
+			for (int i = 1; i < vaultMetaData.size(); i++) {
+				std::cout << vaultMetaData[i].vaultName << std::endl;
+			}
+		}
+
 		return;
 	}
 
@@ -118,14 +128,43 @@ void processVaultCommand(const CommandLineParser& args, const std::string &activ
 		Vault newVault(newVaultName, vaultKey, true);
 		newVault.writeVault();
 
+		// Generate pw hash and salt for the new vault
+
+		// Compute random salt:
+		unsigned char salt[SKEY_LENGTH];
+		std::random_device rd;
+		std::mt19937 mt(rd());
+		std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF);
+		uint32_t *saltWriter = salt;
+		for (int i = 0; i < SKEY_LENGTH / 4; ++i)
+		{
+			saltWriter[i] = dist(mt);
+		}
+
+		// Generate pw hash
+		newVaultKeyHash = sha256(sha256(vaultKey) + salt)
+
 		// Switch active vault to the new vault if there is no active vault (activeVaultName == ""):
+		// Since the meta file is empty, the new vault metadata need to be written twice because the top 
+		//		 spot in the metadata is reserved for a duplicate used to indicate which vault is active
 		if (activeVaultName == "") {
 			std::ofstream fileStream("meta/meta");
+			fileStream.write(newVaultKeyHash, SKEY_LENGTH);
+			fileStream.write(salt, SKEY_LENGTH);
+			fileStream.write(newVaultName.c_str(), newVaultName.size());
+			fileStream.write("\n", 1);
+			fileStream.write(newVaultKeyHash, SKEY_LENGTH);
+			fileStream.write(salt, SKEY_LENGTH);
 			fileStream.write(newVaultName.c_str(), newVaultName.size());
 			fileStream.write("\n", 1);
 			fileStream.close();
 		} else {
-			// TODO: Append new vault name to end of meta/meta
+			// If there is active vault, append new vault name to end of meta/meta only once
+			std::ofstream fileStream("meta/meta");
+			fileStream.write(newVaultKeyHash, SKEY_LENGTH);
+			fileStream.write(salt, SKEY_LENGTH);
+			fileStream.write(newVaultName.c_str(), newVaultName.size());
+			fileStream.write("\n", 1);
 		}
 	} else if (metaCommand == "update") {
 		// Error if there is no active vault:
@@ -135,8 +174,18 @@ void processVaultCommand(const CommandLineParser& args, const std::string &activ
 		}
 
 		// TODO: Verify that vaultKey is correct and report error and exit if not
-
 		std::string newVaultKey = args.getArg("-knew");
+		if (newVaultKey == "") {
+			std::cout << "Error: New vault key must be provided to update vault key" << std::endl;
+			return;
+		}
+		
+		std::string providedKeyHash = sha256(sha256(vaultKey) + activeVaultSalt)
+		if (providedKeyHash != activeVaultHash) {
+			std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
+			return;
+		}
+		
 		Vault activeVault(vaultName, vaultKey);
 		activeVault.updateKey(newVaultKey);
 		activeVault.writeVault();
@@ -174,6 +223,7 @@ void processVaultCommand(const CommandLineParser& args, const std::string &activ
 /**
 	Process a command that pertains to some account (or accounts) in the currently active vault
 */
+// TODO:fix input parameters
 void processAccountCommand(const CommandLineParser& args, const std::string &activeVaultName)
 {
 	if (activeVaultName == "") {
