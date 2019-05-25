@@ -26,9 +26,18 @@ void Utils::clearString(std::string &str) {
 /**
   Computes a sha256 of the input and stores the result in result.
 */
-static void Utils::sha256(unsigned char *result, const unsigned char *input, unsigned long inputSize) {
+void Utils::sha256(unsigned char *result, const unsigned char *input, unsigned long inputSize) {
   hash_state md;
   sha256_init(&md);
   sha256_process(&md, input, inputSize);
   sha256_done(&md, result);
 }
+
+void Utils::concatArr(const unsigned char *buffer1, const unsigned char *buffer2, int len1, int len2, const unsigned char *output) {
+	for (int i = 0; i < len1; i++) {
+		output[i] = buffer1[i];
+	}
+	for (int j = 0; j < len2; j++) {
+		output[len1+j] = buffer2[j];
+	}
+} 

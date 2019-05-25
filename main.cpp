@@ -1,6 +1,5 @@
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <tomcrypt.h>
 
 #include <iostream>
 #include <fstream>
@@ -10,6 +9,7 @@
 
 #include "CommandLineParser.h"
 #include "Vault.h"
+#include "Utils.h"
 
 struct VaultInfo {
 	unsigned char vaultKeyHash[SKEY_LENGTH]; // vaultKeyHash = sha256(sha256(key) + vaultKeyNonce)
@@ -133,17 +133,16 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 
 		// Compute random salt:
 		unsigned char salt[SKEY_LENGTH];
-		std::random_device rd;
-		std::mt19937 mt(rd());
-		std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF);
-		uint32_t *saltWriter = (uint32_t *)salt;
-		for (int i = 0; i < SKEY_LENGTH / 4; ++i)
-		{
-			saltWriter[i] = dist(mt);
-		}
+		Utils::genRand(salt, SKEY_LENGTH);
 
 		// Generate pw hash
-		newVaultKeyHash = sha256(sha256(vaultKey) + salt)
+		unsigned char newVaultKeyHash[SKEY_LENGTH];
+		unsigned char skeyHash[SKEY_LENGTH];
+		unsigned char concatBuffer[SKEY_LENGTH * 2];
+		Utils::sha256(skeyHash, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+		Utils::concatArr(skeyHash, salt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
+		Utils::sha256(newVaultKeyHash, concatBuffer, SKEY_LENGTH * 2);
+		// unsigned char newVaultKeyHash = sha256(sha256(vaultKey).c_str() + salt.c_str());
 
 		// Switch active vault to the new vault if there is no active vault (activeVaultName == ""):
 		// Since the meta file is empty, the new vault metadata need to be written twice because the top 
@@ -180,8 +179,15 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 			std::cout << "Error: New vault key must be provided to update vault key" << std::endl;
 			return;
 		}
-		
-		std::string providedKeyHash = sha256(sha256(vaultKey) + activeVaultSalt)
+
+		unsigned char providedKeyHash[SKEY_LENGTH];
+		unsigned char oldskeyHash[SKEY_LENGTH];
+		unsigned char concatBuffer[SKEY_LENGTH * 2];
+		Utils::sha256(oldskeyHash, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+		Utils::concatArr(oldskeyHash, salt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
+		Utils::sha256(providedKeyHash, concatBuffer, SKEY_LENGTH * 2);
+
+		// std::string providedKeyHash = sha256(sha256(vaultKey) + activeVaultSalt)
 		if (providedKeyHash != activeVaultHash) {
 			std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
 			return;
