@@ -1,5 +1,23 @@
 #include "Utils.h"
+
 #include <tomcrypt.h>
+#include <random>
+
+/**
+  Uses the mersenne twister algorithm to generate a 'size'-byte random
+  number and stores the result in the 'result' buffer. Assumes that
+  'size' is some multiple of 4-bytes and that 'result' is large enough
+  to hold the result.
+*/
+static void genRand(unsigned char *result, int size) {
+  std::random_device rd;
+  std::mt19937 mt(rd());
+  std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF);
+  uint32_t *resultWriter = (uint32_t *)result;
+  for (int i = 0; i < size / 4; ++i) {
+    resultWriter[i] = dist(mt);
+  }
+}
 
 /**
   Returns true if the contents of buffer 1 are equal to the contents of buffer 2 and false otherwise.
