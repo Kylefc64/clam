@@ -88,9 +88,9 @@ std::string initialize(std::vector<VaultInfo> &vaultMetaData) {
 	Process a command that pertains to an entire vault
 */
 void processVaultCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData)
-{
-	std::string activeVaultHash = vaultMetaData[0].vaultKeyHash;
-	std::string activeVaultSalt = vaultMetaData[0].vaultKeyNonce;
+{	
+	const unsigned char* activeVaultHash = vaultMetaData[0].vaultKeyHash;
+	const unsigned char* activeVaultSalt = vaultMetaData[0].vaultKeyNonce;
 	std::string activeVaultName = vaultMetaData[0].vaultName;
 	std::string metaCommand = args.getArg("-v");
 	if (metaCommand == "list") {
@@ -119,9 +119,11 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 		std::string newVaultName = args.getArg("-n");
 
 		// Error if the vault already exists:
-		if (!((stat("vaults/" + newVaultName, &info) != 0) || (info.st_mode & S_IFDIR))) {
-			std::cout << "Error: A vault with the given name already exists." << std::endl;
-			return;
+		for (int i = 1; i < vaultMetaData.size(); i++) {
+			if (vaultMetaData[i].vaultName == newVaultName) {
+				std::cout << "Error: A vault with the given name already exists." << std::endl;
+				return;
+			}
 		}
 
 		Vault newVault(newVaultName, vaultKey, true);
