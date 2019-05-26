@@ -22,9 +22,9 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		// New vaults will be empty
 	} else {
 		// Load the vault with the given name (assume it exists):
-		fileStream.seekg(0, fileStream.end());
+		fileStream.seekg(0, fileStream.end);
 		int fileSize = fileStream.tellg();
-		fileStream.seekg(0, fileStream.beg());
+		fileStream.seekg(0, fileStream.beg);
 		if (fileSize == 0) {
 			// Do not try to decrypt and load accounts from an empty vault:
 			return;
@@ -179,13 +179,7 @@ void Vault::writeVault() const {
 
 	// Compute random iv/nonce:
 	unsigned char iv[SKEY_LENGTH];
-	std::random_device rd;
-	std::mt19937 mt(rd());
-	std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF);
-	uint32_t *ivWriter = (uint32_t *)iv;
-	for (int i = 0; i < SKEY_LENGTH / 4; ++i) {
-		ivWriter[i] = dist(mt);
-	}
+	Utils::genRand(iv, SKEY_LENGTH);
 
 	// Use sha(vaultKey) and iv to encrypt byte array
 
