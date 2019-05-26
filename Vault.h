@@ -11,7 +11,7 @@
 
 class Vault {
 public:
-	Vault(const std::string &vaultName, const std::string &vaultKey, bool create);
+	Vault(const std::string &vaultName, const std::string &vaultKey, bool create=false);
 	~Vault();
 	void printTags(std::ostream &outputStream) const;
 	Account& getAccount(const std::string &tag) const;

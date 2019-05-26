@@ -12,7 +12,7 @@
 	Assumes that the Vault key is correct, that if create is false a Vault with the given
 	name exists, and that if create is true a Vault with the given name does not exist.
 */
-Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool create=false)
+Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool create)
 : vaultName(vaultName), vaultKey(vaultKey) {
 	std::string filePath = "vaults/" + vaultName;
 	std::ifstream fileStream(filePath);

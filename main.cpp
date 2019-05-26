@@ -147,24 +147,25 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 		// Switch active vault to the new vault if there is no active vault (activeVaultName == ""):
 		// Since the meta file is empty, the new vault metadata need to be written twice because the top 
 		//		 spot in the metadata is reserved for a duplicate used to indicate which vault is active
+		char newLine = '\n';
 		if (activeVaultName == "") {
 			std::ofstream fileStream("meta/meta");
-			fileStream.write(newVaultKeyHash, SKEY_LENGTH);
-			fileStream.write(salt, SKEY_LENGTH);
+			fileStream.write((char *)newVaultKeyHash, SKEY_LENGTH);
+			fileStream.write((char *)salt, SKEY_LENGTH);
 			fileStream.write(newVaultName.c_str(), newVaultName.size());
-			fileStream.write("\n", 1);
-			fileStream.write(newVaultKeyHash, SKEY_LENGTH);
-			fileStream.write(salt, SKEY_LENGTH);
-			fileStream.write(newVaultName.c_str(), newVaultName.size());
-			fileStream.write("\n", 1);
+			fileStream.write(&newLine, 1);
+			fileStream.write((char *)newVaultKeyHash, SKEY_LENGTH);
+			fileStream.write((char *)salt, SKEY_LENGTH);
+			fileStream.write((char *)newVaultName.c_str(), newVaultName.size());
+			fileStream.write(&newLine, 1);
 			fileStream.close();
 		} else {
 			// If there is active vault, append new vault name to end of meta/meta only once
 			std::ofstream fileStream("meta/meta");
-			fileStream.write(newVaultKeyHash, SKEY_LENGTH);
-			fileStream.write(salt, SKEY_LENGTH);
+			fileStream.write((char *)newVaultKeyHash, SKEY_LENGTH);
+			fileStream.write((char *)salt, SKEY_LENGTH);
 			fileStream.write(newVaultName.c_str(), newVaultName.size());
-			fileStream.write("\n", 1);
+			fileStream.write(&newLine, 1);
 		}
 	} else if (metaCommand == "update") {
 		// Error if there is no active vault:
@@ -180,6 +181,10 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 			return;
 		}
 
+		// Compute random salt:
+		unsigned char salt[SKEY_LENGTH];
+		Utils::genRand(salt, SKEY_LENGTH);
+
 		unsigned char providedKeyHash[SKEY_LENGTH];
 		unsigned char oldskeyHash[SKEY_LENGTH];
 		unsigned char concatBuffer[SKEY_LENGTH * 2];
@@ -193,7 +198,7 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 			return;
 		}
 		
-		Vault activeVault(vaultName, vaultKey);
+		Vault activeVault(activeVaultName, vaultKey);
 		activeVault.updateKey(newVaultKey);
 		activeVault.writeVault();
 	} else if (metaCommand == "switch") {
@@ -216,10 +221,11 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 		// TODO: Verify that vaultKey is correct and report error and exit if not
 
 		std::string vaultToDeleteName = args.getArg("-n");
+		std::string filePathToRemove = "vaults/" + vaultToDeleteName;
 		// TODO: Remove the vault to delete's name from the meta/meta file
 
 		// Remove the vault file in the 'vaults' directory:
-		std::remove("vaults/" + vaultToDeleteName);
+		std::remove(filePathToRemove.c_str());
 	} else {
 		std::cout << "Error: Invalid vault command\n"
 			<< "Valid commands are: add, update, switch, delete, list" << std::endl;
@@ -237,22 +243,22 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 		return;
 	}
 
-	std::string vaultKey = arg.getArg("-k");
+	std::string vaultKey = args.getArg("-k");
 	if (vaultKey == "") {
 		std::cout << "Error: Vault key must be provided to access the active vault's accounts." << std::endl;
 		return;
 	}
 
 	// Attempt to load and decrypt vault:
-	Vault activeVault(activeVaultName, vaultKey);
+	Vault activeVault(vaultMetaData[0].vaultName, vaultKey);
 	if (args.containsArg("-p")) {
-		processAccountPrintCommand(cmdLineParser, activeVault);
+		processAccountPrintCommand(args, activeVault);
 	} else if (args.containsArg("-c")) {
-		processAccountClipCommand(cmdLineParser, activeVault);
-	} else if (arg.containsArg("-u")) {
-		processAccountUpdateCommand(cmdLineParser, activeVault);
-	} else if (arg.containsArg("-a")) {
-		processAccountAddCommand(cmdLineParser, activeVault);
+		processAccountClipCommand(args, activeVault);
+	} else if (args.containsArg("-u")) {
+		processAccountUpdateCommand(args, activeVault);
+	} else if (args.containsArg("-a")) {
+		processAccountAddCommand(args, activeVault);
 	} else {
 		std::cout << "Error: Invalid account command\n"
 			<< "Valid command options are: -p, -c, -u, -a" << std::endl;
@@ -315,20 +321,20 @@ void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVau
 	if (args.containsArg("-un")) {
 		std::string username = args.getArg("-un");
 		// Update the username of the given account
-		Account account = activeVault.getaccount(accountName);
-		account.username = username;
+		Account account = activeVault.getAccount(accountName);
+		account.setUsername(username);
 		activeVault.writeVault();
 	} else if (args.containsArg("-pw")) {
 		std::string password = args.getArg("-pw");
 		// Update the password of the given account
-		Account account = activeVault.getaccount(accountName);
-		account.password = password;
+		Account account = activeVault.getAccount(accountName);
+		account.setPassword(password);
 		activeVault.writeVault();
 	} else if (args.containsArg("-note")) {
 		std::string note = args.getArg("-note");
 		// Update the note of the given account
-		Account account = activeVault.getaccount(accountName);
-		account.note = note;
+		Account account = activeVault.getAccount(accountName);
+		account.setNote(note);
 		activeVault.writeVault();
 	} else if (args.containsArg("-f")) {
 		std::string filePath = args.getArg("-f");
