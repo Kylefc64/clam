@@ -1,4 +1,5 @@
 #include "Account.h"
+#include "Utils.h"
 
 #include <cstring>
 
@@ -118,10 +119,13 @@ std::vector<uint8_t> Account::serialize() const {
 	return serialized;
 }
 
+/**
+	Wipes sensitive in-memory data.
+*/
 void Account::wipeSensitiveData()
 {
-	memset(tag.c_str(), 0, tag.size());
-	memset(username.c_str(), 0, username.size());
-	memset(password.c_str(), 0, password.size());
-	memset(note.c_str(), 0, note.size());
+	Utils::clearString(tag);
+	Utils::clearString(username);
+	Utils::clearString(password);
+	Utils::clearString(note);
 }

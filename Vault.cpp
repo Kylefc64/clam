@@ -1,4 +1,5 @@
 #include "Vault.h"
+#include "Utils.h"
 
 #include <tomcrypt.h>
 #include <fstream>
@@ -31,10 +32,7 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 
 		// Compute sha512(vaultKey) (skey):
 		unsigned char skey[SKEY_LENGTH];
-		hash_state md;
-		sha256_init(&md);
-		sha256_process(&md, (unsigned char *)vaultKey.c_str(), vaultKey.size());
-		sha256_done(&md, skey);
+		Utils::sha256(skey, (unsigned char *)vaultKey.c_str(), vaultKey.size());
 
 		// Load 32-byte iv
 		unsigned char iv[SKEY_LENGTH];
@@ -177,10 +175,7 @@ void Vault::writeVault() const {
 
 	// Compute sha512(vaultKey) (skey):
 	unsigned char skey[SKEY_LENGTH];
-	hash_state md;
-	sha256_init(&md);
-	sha256_process(&md, (unsigned char *)vaultKey.c_str(), vaultKey.size());
-	sha256_done(&md, skey);
+	Utils::sha256(skey, (unsigned char *)vaultKey.c_str(), vaultKey.size());
 
 	// Compute random iv/nonce:
 	unsigned char iv[SKEY_LENGTH];
