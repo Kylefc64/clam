@@ -21,8 +21,8 @@ std::string initialize(std::vector<VaultInfo> &vaultMetaData);
 void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
 void processVaultCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData);
 void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData);
-void processAccountPrintCommand(const CommandLineParser& args, const Vault &activeVault);
-void processAccountClipCommand(const CommandLineParser& args, const Vault &activeVault);
+void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault);
+void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault);
 void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault);
 void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault);
 
@@ -269,7 +269,7 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 /**
 	Processes a print command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountPrintCommand(const CommandLineParser& args, const Vault &activeVault)
+void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault)
 {
 	if (args.containsArg("-l")) {
 		activeVault.printTags(std::cout);
@@ -294,7 +294,7 @@ void processAccountPrintCommand(const CommandLineParser& args, const Vault &acti
 /**
 	Processes a clip command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountClipCommand(const CommandLineParser& args, const Vault &activeVault)
+void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault)
 {
 	std::string accountName = args.getArg("-n");
 	if (args.containsArg("-un")) {

@@ -1,6 +1,7 @@
 #include "Utils.h"
 
 #include <tomcrypt.h>
+#include <sys/types.h>
 #include <random>
 
 /**
@@ -9,7 +10,7 @@
   'size' is some multiple of 4-bytes and that 'result' is large enough
   to hold the result.
 */
-static void genRand(unsigned char *result, int size) {
+void Utils::genRand(unsigned char *result, int size) {
   std::random_device rd;
   std::mt19937 mt(rd());
   std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF);
@@ -51,7 +52,7 @@ void Utils::sha256(unsigned char *result, const unsigned char *input, unsigned l
   sha256_done(&md, result);
 }
 
-void Utils::concatArr(const unsigned char *buffer1, const unsigned char *buffer2, int len1, int len2, const unsigned char *output) {
+void Utils::concatArr(const unsigned char *buffer1, const unsigned char *buffer2, int len1, int len2, unsigned char *output) {
 	for (int i = 0; i < len1; i++) {
 		output[i] = buffer1[i];
 	}

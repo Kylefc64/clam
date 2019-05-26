@@ -125,7 +125,7 @@ void Vault::printTags(std::ostream &outputStream) const
 	Returns a reference to the Account labeled 'tag.'
 	Assumes that an account with the given tag exists.
 */
-Account& Vault::getAccount(const std::string &tag) const {
+Account& Vault::getAccount(const std::string &tag) {
 	for (int i = 0; i < accounts.size(); ++i) {
 		if (accounts[i].getTag() == tag) {
 			return accounts[i];
