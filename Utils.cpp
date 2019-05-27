@@ -59,4 +59,14 @@ void Utils::concatArr(const unsigned char *buffer1, const unsigned char *buffer2
 	for (int j = 0; j < len2; j++) {
 		output[len1+j] = buffer2[j];
 	}
-} 
+}
+
+bool Utils::verifyKey(std::string vaultKey, const unsigned char *salt, const unsigned char *correctHash) {
+	unsigned char providedKeyHash[SKEY_LENGTH];
+	unsigned char unsaltedKeyHash[SKEY_LENGTH];
+	unsigned char concatBuffer[SKEY_LENGTH * 2];
+	Utils::sha256(unsaltedKeyHash, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+	Utils::concatArr(unsaltedKeyHash, salt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
+	Utils::sha256(providedKeyHash, concatBuffer, SKEY_LENGTH * 2);
+	return Utils::contentsEqual(providedKeyHash, correctHash, SKEY_LENGTH);
+}

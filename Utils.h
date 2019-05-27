@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include <string>
+#define SKEY_LENGTH 32
 
 class Utils {
   public:
@@ -10,6 +11,7 @@ class Utils {
       static void clearString(std::string &str);
       static void sha256(unsigned char *result, const unsigned char *input, unsigned long inputSize);
       static void concatArr(const unsigned char *buffer1, const unsigned char *buffer2, int len1, int len2, unsigned char *output);
+      static bool verifyKey(std::string vaultKey, const unsigned char *salt, const unsigned char *correctHash);
 };
 
 #endif

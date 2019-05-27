@@ -6,6 +6,7 @@
 #include <string>
 #include <cstdio>
 #include <vector>
+#include <string.h>
 
 #include "CommandLineParser.h"
 #include "Vault.h"
@@ -39,6 +40,7 @@ int main(int argc, char *argv[]) {
 	}
 }
 
+// TODO: I'm not sure if numVaults assigned the approporate value here
 void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
 	std::ifstream fileStream("meta/meta");
 
@@ -174,26 +176,23 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 			return;
 		}
 
-		// TODO: Verify that vaultKey is correct and report error and exit if not
+		// Verify that vaultKey is correct and report error and exit if not
 		std::string newVaultKey = args.getArg("-knew");
 		if (newVaultKey == "") {
 			std::cout << "Error: New vault key must be provided to update vault key" << std::endl;
 			return;
 		}
 
-		// Compute random salt:
-		unsigned char salt[SKEY_LENGTH];
-		Utils::genRand(salt, SKEY_LENGTH);
+		// // left for reference in case Utils::verifyKey doesn't compile
+		// unsigned char providedKeyHash[SKEY_LENGTH];
+		// unsigned char unsaltedKeyHash[SKEY_LENGTH];
+		// unsigned char concatBuffer[SKEY_LENGTH * 2];
+		// Utils::sha256(unsaltedKeyHash, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+		// Utils::concatArr(unsaltedKeyHash, activeVaultSalt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
+		// Utils::sha256(providedKeyHash, concatBuffer, SKEY_LENGTH * 2);
 
-		unsigned char providedKeyHash[SKEY_LENGTH];
-		unsigned char oldskeyHash[SKEY_LENGTH];
-		unsigned char concatBuffer[SKEY_LENGTH * 2];
-		Utils::sha256(oldskeyHash, (unsigned char *)vaultKey.c_str(), vaultKey.size());
-		Utils::concatArr(oldskeyHash, salt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
-		Utils::sha256(providedKeyHash, concatBuffer, SKEY_LENGTH * 2);
-
-		// std::string providedKeyHash = sha256(sha256(vaultKey) + activeVaultSalt)
-		if (providedKeyHash != activeVaultHash) {
+		// // std::string providedKeyHash = sha256(sha256(vaultKey) + activeVaultSalt)
+		if (!Utils::verifyKey(vaultKey, activeVaultSalt, activeVaultHash)) {
 			std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
 			return;
 		}
@@ -209,7 +208,36 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 		}
 
 		std::string vaultToSwitchToName = args.getArg("-n");
-		// TODO: In the meta/meta file, swap the active vault's name with the name of the vault to switch to:
+		// In the meta/meta file, swap the active vault's name with the name of the vault to switch to:
+
+		// Search in the meta file for the name of the vault to switch to
+		std::ifstream fileStream("meta/meta");
+		unsigned char currKeyHash[SKEY_LENGTH];
+		unsigned char currKeyNonce[SKEY_LENGTH];
+		std::string currVaultName;
+
+		for (int i = 0; i < vaultMetaData.size(); i++) {
+			fileStream.read((char *)currKeyHash, SKEY_LENGTH);
+			fileStream.read((char *)currKeyNonce, SKEY_LENGTH);
+			std::getline(fileStream, currVaultName);
+			// Match found, overwrite first vault info in meta file
+			if (currVaultName == vaultToSwitchToName) {
+				char newLine = '\n';
+				std::ofstream fileStream("meta/meta");
+				fileStream.write((char *)currKeyHash, SKEY_LENGTH);
+				fileStream.write((char *)currKeyNonce, SKEY_LENGTH);
+				fileStream.write(currVaultName.c_str(), currVaultName.size());
+				fileStream.write(&newLine, 1);
+				std::cout << "Switched to vault " + currVaultName << std::endl;
+				return;
+			}
+		}
+
+		// No match found, no vault with name equal to vaultToSwitchToName exist in meta file
+		std::cout << "Error: No vault with the name of \"" + vaultToSwitchToName + "\" exist" << std::endl;
+		return;
+
+		
 
 	} else if (metaCommand == "delete") {
 		// Error if there is no active vault:
@@ -218,14 +246,52 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 			return;
 		}
 
-		// TODO: Verify that vaultKey is correct and report error and exit if not
-
 		std::string vaultToDeleteName = args.getArg("-n");
 		std::string filePathToRemove = "vaults/" + vaultToDeleteName;
-		// TODO: Remove the vault to delete's name from the meta/meta file
 
-		// Remove the vault file in the 'vaults' directory:
-		std::remove(filePathToRemove.c_str());
+		if (vaultToDeleteName == "") {
+			std::cout << "Error: You must specify which vault to delete." << std::endl;
+			return;
+		}
+
+		else if (vaultToDeleteName == activeVaultName) {
+			std::cout << "Error: You cannot delete a vault that is currently active." << std::endl;
+			return;
+		}
+
+		// Search in the meta file for line to delete
+		std::ifstream fileStream("meta/meta");
+		std::string currline;
+		unsigned char currKeyHash[SKEY_LENGTH];
+		unsigned char currKeyNonce[SKEY_LENGTH];
+		std::string currVaultName;
+
+		for (int i = 0; i < vaultMetaData.size(); i++) {
+			std::getline(fileStream, currline);
+			strncpy((char *)currKeyHash, currline.substr(0,SKEY_LENGTH).c_str(), SKEY_LENGTH);
+			strncpy((char *)currKeyNonce, currline.substr(SKEY_LENGTH,SKEY_LENGTH).c_str(), SKEY_LENGTH);
+			currVaultName = currline.substr(SKEY_LENGTH*2, std::string::npos);
+			// Match found in meta file
+			if (currVaultName == vaultToDeleteName) {
+				// Verify that vaultKey is correct and report error and exit if not
+				if (!Utils::verifyKey(vaultKey, currKeyNonce, currKeyHash)) {
+					std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
+					return;
+				}				
+				// Remove the vault to delete's name from the meta/meta file
+				currline.replace(0, std::string::npos, "");				
+				// Remove the vault file in the 'vaults' directory:
+				std::remove(filePathToRemove.c_str());
+
+				std::cout << currVaultName + " has been deleted."<< std::endl;
+				return;
+			}
+		}
+		// No match found, no vault with name equal to vaultToDeleteName exist in meta file
+		std::cout << "Error: No vault with the name of \"" + vaultToDeleteName + "\" exist" << std::endl;
+		return;
+
+
 	} else {
 		std::cout << "Error: Invalid vault command\n"
 			<< "Valid commands are: add, update, switch, delete, list" << std::endl;
