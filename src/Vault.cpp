@@ -1,7 +1,6 @@
 #include "Vault.h"
 #include "Utils.h"
 
-#include <tomcrypt.h>
 #include <fstream>
 #include <random>
 #include <cstring>
@@ -25,7 +24,7 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		fileStream.seekg(0, fileStream.end);
 		int fileSize = fileStream.tellg();
 		fileStream.seekg(0, fileStream.beg);
-		if (fileSize == 0) {
+		if (fileSize <= 0) {
 			// Do not try to decrypt and load accounts from an empty vault:
 			return;
 		}
@@ -47,38 +46,8 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		unsigned char *plaintext = new unsigned char[ciphertextSize];
 
 		// Use sha(vaultKey) and iv to decrypt account list byte array
-		// Register twofish cipher:
-		if (register_cipher(&twofish_desc) == -1) {
-			std::cout << "Error registering cipher.\n" << std::endl;
-			exit(1);
-		}
-
-		// Initialize CTR cipher:
-		int err;
-		symmetric_CTR ctr;
-		if ((err = ctr_start(
-			find_cipher("twofish"), /* index of desired cipher */
-			iv, /* the initial vector */
-			skey, /* the secret key */
-			SKEY_LENGTH, /* length of secret key (16 bytes) */
-			0, /* 0 == default # of rounds */
-			CTR_COUNTER_LITTLE_ENDIAN, /* Little endian counter */
-			&ctr) /* where to store the CTR state */
-			) != CRYPT_OK) {
-			std::cout << "ctr_start error: " << error_to_string(err) << std::endl;
-			exit(1);
-		}
-
-		// Decrypt plaintext using CTR cipher:
-		if ((err = ctr_encrypt(ciphertext, /* ciphertext */
-			plaintext, /* plaintext */
-			ciphertextSize, /* length of plaintext pt */
-			&ctr) /* CTR state */
-			) != CRYPT_OK) {
-			std::cout << "ctr_decrypt error: " << error_to_string(err) << std::endl;
-			exit(1);
-		}
-
+		Utils::ctrDecrypt(ciphertext, plaintext, ciphertextSize, iv, skey, SKEY_LENGTH);
+		
 		// Load one account at a time from the decrypted byte array:
 		unsigned char *plaintextIter = plaintext;
 		unsigned char *plaintextEnd = plaintext + ciphertextSize;
@@ -86,11 +55,9 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 			accounts.push_back(Account(&plaintextIter));
 		}
 
-		// Clean up cipher and memory:
-		ctr_done(&ctr);
-		zeromem(&ctr, sizeof(ctr));
-		zeromem(skey, SKEY_LENGTH);
-		zeromem(plaintext, ciphertextSize);
+		// Clean up memory:
+		std::memset(skey, 0, SKEY_LENGTH);
+		std::memset(plaintext, 0, ciphertextSize);
 		delete[] plaintext;
 		delete[] ciphertext;
 	}
@@ -161,6 +128,10 @@ bool Vault::exists(const std::string &tag) {
 	Encrypts and writes all Accounts in this Vault to disk at vaults/vaultName.
 */
 void Vault::writeVault() const {
+	if (accounts.empty()) {
+		return;
+	}
+
 	// Create a byte array from list of accounts:
 	std::vector<uint8_t> serializedAccountList;
 	std::vector<uint8_t> serializedAccount;
@@ -173,50 +144,18 @@ void Vault::writeVault() const {
 	size_t plaintextSize = serializedAccountList.size();
 	unsigned char *plaintext = (unsigned char *)serializedAccountList.data();
 
+	// Allocate buffer in which to store the ciphertext:
+  	unsigned char *ciphertext = new unsigned char[plaintextSize];
+
 	// Compute sha512(vaultKey) (skey):
 	unsigned char skey[SKEY_LENGTH];
 	Utils::sha256(skey, (unsigned char *)vaultKey.c_str(), vaultKey.size());
 
-	// Compute random iv/nonce:
+	// Allocate array in which to store IV/nonce:
 	unsigned char iv[SKEY_LENGTH];
-	Utils::genRand(iv, SKEY_LENGTH);
 
-	// Use sha(vaultKey) and iv to encrypt byte array
-
-	// Register twofish cipher:
-	if (register_cipher(&twofish_desc) == -1) {
-		std::cout << "Error registering cipher.\n" << std::endl;
-		exit(1);
-	}
-
-	// Initialize CTR cipher:
-	int err;
-	symmetric_CTR ctr;
-	if ((err = ctr_start(
-		find_cipher("twofish"), /* index of desired cipher */
-		iv, /* the initial vector */
-		skey, /* the secret key */
-		SKEY_LENGTH, /* length of secret key (16 bytes) */
-		0, /* 0 == default # of rounds */
-		CTR_COUNTER_LITTLE_ENDIAN, /* Little endian counter */
-		&ctr) /* where to store the CTR state */
-		) != CRYPT_OK) {
-		std::cout << "ctr_start error: " << error_to_string(err) << std::endl;
-		exit(1);
-	}
-
-	// Allocate buffer in which to store the ciphertext:
-	unsigned char *ciphertext = new unsigned char[plaintextSize];
-
-	// Encrypt plaintext using CTR cipher:
-	if ((err = ctr_encrypt(plaintext, /* plaintext */
-		ciphertext, /* ciphertext */
-		plaintextSize, /* length of plaintext pt */
-		&ctr) /* CTR state */
-		) != CRYPT_OK) {
-		std::cout << "ctr_encrypt error: " << error_to_string(err) << std::endl;
-		exit(1);
-	}
+	// Use sha256(vaultKey) as skey to encrypt byte array:
+	Utils::ctrEncrypt(plaintext, ciphertext, plaintextSize, iv, skey, SKEY_LENGTH);
 
 	// write sha(sha(vaultKey)), iv, and encrypted byte array to disk under vaults/vaultName
 	std::string filePath = "vaults/" + vaultName;
@@ -225,10 +164,8 @@ void Vault::writeVault() const {
 	fileStream.write((char *)ciphertext, plaintextSize);
 	fileStream.close();
 
-	// Clean up cipher and memory:
-	ctr_done(&ctr);
-	zeromem(&ctr, sizeof(ctr));
-	zeromem(skey, SKEY_LENGTH);
+	// Clean up memory:
+	std::memset(skey, 0, SKEY_LENGTH);
 	delete[] ciphertext;
 }
 

@@ -6,20 +6,22 @@
 #include <string>
 #include <cstdio>
 #include <vector>
+#include <cstring>
 
 #include "CommandLineParser.h"
 #include "Vault.h"
 #include "Utils.h"
 
 struct VaultInfo {
-	unsigned char vaultKeyHash[SKEY_LENGTH]; // vaultKeyHash = sha256(sha256(key) + vaultKeyNonce)
-	unsigned char vaultKeyNonce[SKEY_LENGTH];
+	unsigned char vaultSkeyHash[SKEY_LENGTH]; // vaultSkeyHash = sha256(sha256(skey) + vaultSkeySalt)
+	unsigned char vaultSkeySalt[SKEY_LENGTH];
 	std::string vaultName;
 };
 
-std::string initialize(std::vector<VaultInfo> &vaultMetaData);
+void initialize(std::vector<VaultInfo> &vaultMetaData);
 void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
-void processVaultCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData);
+void writeVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
+void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &vaultMetaData);
 void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData);
 void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault);
 void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault);
@@ -27,7 +29,10 @@ void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVau
 void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault);
 
 int main(int argc, char *argv[]) {
+	Utils::debugPrint(std::cout, "Entered main\n");
+
 	std::vector<VaultInfo> vaultMetaData;
+	initialize(vaultMetaData);
 
 	CommandLineParser cmdLineParser(argc, argv);
 	if (cmdLineParser.containsArg("-v")) {
@@ -40,30 +45,58 @@ int main(int argc, char *argv[]) {
 }
 
 void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
+	Utils::debugPrint(std::cout, "Entered readVaultMetaData\n");
+
 	std::ifstream fileStream("meta/meta");
 
 	uint32_t numVaults;
 	fileStream.read((char *)&numVaults, sizeof(numVaults));
 
 	VaultInfo vaultInfo;
-
+	uint32_t vaultNameSize;
 	for (int i = 0; i < numVaults; ++i) {
-		fileStream.read((char *)vaultInfo.vaultKeyHash, SKEY_LENGTH);
-		fileStream.read((char *)vaultInfo.vaultKeyNonce, SKEY_LENGTH);
-		std::getline(fileStream, vaultInfo.vaultName);
+		fileStream.read((char *)&vaultNameSize, sizeof(vaultNameSize)); // read vault name's size
+		vaultInfo.vaultName.reserve(vaultNameSize); // reserve vaultNameSize bytes
+		fileStream.read((char *)&vaultInfo.vaultName[0], vaultNameSize); // read vaultName from file
+		fileStream.read((char *)vaultInfo.vaultSkeyHash, SKEY_LENGTH);
+		fileStream.read((char *)vaultInfo.vaultSkeySalt, SKEY_LENGTH);
 		vaultMetaData.push_back(vaultInfo);
 	}
+	fileStream.close();
+}
+
+void writeVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
+	Utils::debugPrint(std::cout, "Entered writeVaultMetaData\n");
+
+	std::ofstream fileStream("meta/meta");
+
+	uint32_t numVaults = vaultMetaData.size();
+	fileStream.write((char *)&numVaults, sizeof(numVaults));
+
+	VaultInfo vaultInfo;
+	uint32_t vaultNameSize;
+	for (int i = 0; i < numVaults; ++i) {
+		vaultInfo = vaultMetaData[i];
+		vaultNameSize = vaultInfo.vaultName.size();
+		fileStream.write((char *)&vaultNameSize, sizeof(vaultNameSize)); // read vault name's size
+		fileStream.write((char *)vaultInfo.vaultName.c_str(), vaultNameSize); // read vaultName from file
+		fileStream.write((char *)vaultInfo.vaultSkeyHash, SKEY_LENGTH);
+		fileStream.write((char *)vaultInfo.vaultSkeySalt, SKEY_LENGTH);
+	}
+	fileStream.close();
 }
 
 /**
-	Returns the name of the active vault if it exists, or "" if no vaults
-	have been created yet. Creates meta and vaults directories if
-	they do not yet exist.
+	Reads all vault metadata from the meta/meta file and creates the meta and vaults
+	directories if they do not yet exist. Stores all vault metadata in the 'vaultMetaData'
+	vector.
 */
-std::string initialize(std::vector<VaultInfo> &vaultMetaData) {
+void initialize(std::vector<VaultInfo> &vaultMetaData) {
+	Utils::debugPrint(std::cout, "Entered initialize\n");
+
 	struct stat info;
-	if (((stat("meta", &info) != 0) || (info.st_mode & S_IFDIR)) ||
-		((stat("vaults", &info) != 0) || (info.st_mode & S_IFDIR))) {
+	if (((stat("meta", &info) != 0)) ||
+		((stat("vaults", &info) != 0))) {
 		// meta or vaults directories do not exist:
 		
 		// Create empty meta and vaults directories:
@@ -71,10 +104,8 @@ std::string initialize(std::vector<VaultInfo> &vaultMetaData) {
 		system("mkdir vaults/");
 		//system("touch meta/meta");
 		//system("touch vaults/default");
-		return "";
-	} else if ((stat("meta/meta", &info) != 0) || (info.st_mode & S_IFDIR)) {
+	} else if ((stat("meta/meta", &info) != 0)) {
 		// meta/meta file does not exist:
-		return "";
 	} else {
 		// Read meta/meta file:
 		readVaultMetaData(vaultMetaData);
@@ -87,11 +118,9 @@ std::string initialize(std::vector<VaultInfo> &vaultMetaData) {
 /**
 	Process a command that pertains to an entire vault
 */
-void processVaultCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData)
-{	
-	const unsigned char* activeVaultHash = vaultMetaData[0].vaultKeyHash;
-	const unsigned char* activeVaultSalt = vaultMetaData[0].vaultKeyNonce;
-	std::string activeVaultName = vaultMetaData[0].vaultName;
+void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &vaultMetaData) {	
+	Utils::debugPrint(std::cout, "Entered processVaultCommand\n");
+
 	std::string metaCommand = args.getArg("-v");
 	if (metaCommand == "list") {
 		// Check that vaultMetaData is not empty
@@ -116,107 +145,120 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 
 	if (metaCommand == "add") {
 		// Create a new vault:
-		std::string newVaultName = args.getArg("-n");
+		VaultInfo newVaultInfo;
+		newVaultInfo.vaultName = args.getArg("-n");
 
 		// Error if the vault already exists:
 		for (int i = 1; i < vaultMetaData.size(); i++) {
-			if (vaultMetaData[i].vaultName == newVaultName) {
+			if (vaultMetaData[i].vaultName == newVaultInfo.vaultName) {
 				std::cout << "Error: A vault with the given name already exists." << std::endl;
 				return;
 			}
 		}
 
-		Vault newVault(newVaultName, vaultKey, true);
+		Vault newVault(newVaultInfo.vaultName, vaultKey, true);
 		newVault.writeVault();
 
 		// Generate pw hash and salt for the new vault
 
 		// Compute random salt:
-		unsigned char salt[SKEY_LENGTH];
-		Utils::genRand(salt, SKEY_LENGTH);
+		Utils::genRand(newVaultInfo.vaultSkeySalt, SKEY_LENGTH);
 
 		// Generate pw hash
-		unsigned char newVaultKeyHash[SKEY_LENGTH];
-		unsigned char skeyHash[SKEY_LENGTH];
+		unsigned char newVaultSkey[SKEY_LENGTH];
 		unsigned char concatBuffer[SKEY_LENGTH * 2];
-		Utils::sha256(skeyHash, (unsigned char *)vaultKey.c_str(), vaultKey.size());
-		Utils::concatArr(skeyHash, salt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
-		Utils::sha256(newVaultKeyHash, concatBuffer, SKEY_LENGTH * 2);
-		// unsigned char newVaultKeyHash = sha256(sha256(vaultKey).c_str() + salt.c_str());
+		Utils::sha256(newVaultSkey, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+		Utils::concatArr(newVaultSkey, newVaultInfo.vaultSkeySalt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
+		Utils::sha256(newVaultInfo.vaultSkeyHash, concatBuffer, SKEY_LENGTH * 2);
+
+		// Add new vault metadata to vector of vault metadatam:
+		vaultMetaData.push_back(newVaultInfo);
 
 		// Switch active vault to the new vault if there is no active vault (activeVaultName == ""):
 		// Since the meta file is empty, the new vault metadata need to be written twice because the top 
 		//		 spot in the metadata is reserved for a duplicate used to indicate which vault is active
-		char newLine = '\n';
-		if (activeVaultName == "") {
-			std::ofstream fileStream("meta/meta");
-			fileStream.write((char *)newVaultKeyHash, SKEY_LENGTH);
-			fileStream.write((char *)salt, SKEY_LENGTH);
-			fileStream.write(newVaultName.c_str(), newVaultName.size());
-			fileStream.write(&newLine, 1);
-			fileStream.write((char *)newVaultKeyHash, SKEY_LENGTH);
-			fileStream.write((char *)salt, SKEY_LENGTH);
-			fileStream.write((char *)newVaultName.c_str(), newVaultName.size());
-			fileStream.write(&newLine, 1);
-			fileStream.close();
-		} else {
-			// If there is active vault, append new vault name to end of meta/meta only once
-			std::ofstream fileStream("meta/meta");
-			fileStream.write((char *)newVaultKeyHash, SKEY_LENGTH);
-			fileStream.write((char *)salt, SKEY_LENGTH);
-			fileStream.write(newVaultName.c_str(), newVaultName.size());
-			fileStream.write(&newLine, 1);
+		if (vaultMetaData.size() == 1) {
+			vaultMetaData.push_back(newVaultInfo);
 		}
+
+		// Write the updated vault metadata to disk:
+		writeVaultMetaData(vaultMetaData);
 	} else if (metaCommand == "update") {
 		// Error if there is no active vault:
-		if (activeVaultName == "") {
+		if (vaultMetaData.empty()) {
 			std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
 			return;
 		}
 
-		// TODO: Verify that vaultKey is correct and report error and exit if not
+		const unsigned char* activeVaultHash = vaultMetaData[0].vaultSkeyHash;
+		unsigned char* activeVaultSalt = vaultMetaData[0].vaultSkeySalt;
+		std::string activeVaultName = vaultMetaData[0].vaultName;
+
 		std::string newVaultKey = args.getArg("-knew");
 		if (newVaultKey == "") {
 			std::cout << "Error: New vault key must be provided to update vault key" << std::endl;
 			return;
 		}
 
-		// Compute random salt:
-		unsigned char salt[SKEY_LENGTH];
-		Utils::genRand(salt, SKEY_LENGTH);
-
+		// Compute sha256(sha256(providedSkey) || salt) and compare to existing vaultSkeyHash:
 		unsigned char providedKeyHash[SKEY_LENGTH];
-		unsigned char oldskeyHash[SKEY_LENGTH];
+		unsigned char oldnewVaultSkey[SKEY_LENGTH];
 		unsigned char concatBuffer[SKEY_LENGTH * 2];
-		Utils::sha256(oldskeyHash, (unsigned char *)vaultKey.c_str(), vaultKey.size());
-		Utils::concatArr(oldskeyHash, salt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
+		Utils::sha256(oldnewVaultSkey, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+		Utils::concatArr(oldnewVaultSkey, activeVaultSalt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
 		Utils::sha256(providedKeyHash, concatBuffer, SKEY_LENGTH * 2);
 
-		// std::string providedKeyHash = sha256(sha256(vaultKey) + activeVaultSalt)
-		if (providedKeyHash != activeVaultHash) {
-			std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
+		// Verify that vaultKey is correct and report error and exit if not:
+		if (!Utils::contentsEqual(providedKeyHash, activeVaultHash, SKEY_LENGTH)) {
+			std::cout << "Error: Provided vault key is incorrect" << std::endl;
 			return;
 		}
+
+		// Compute and store new random salt:
+		unsigned char newSalt[SKEY_LENGTH];
+		Utils::genRand(newSalt, SKEY_LENGTH);
+		std::memcpy(activeVaultSalt, newSalt, SKEY_LENGTH);
 		
+		// Re-encrypt active Vault with new key:
 		Vault activeVault(activeVaultName, vaultKey);
 		activeVault.updateKey(newVaultKey);
 		activeVault.writeVault();
+
+		// Update vault metadata file:
+		writeVaultMetaData(vaultMetaData);
 	} else if (metaCommand == "switch") {
-		// Error if there is no active vault:
-		if (activeVaultName == "") {
+		std::string vaultToSwitchToName = args.getArg("-n");
+
+		if (vaultMetaData.empty()) {
+			// Error if there is no active vault:
 			std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
+			return;
+		} else if (vaultMetaData[0].vaultName == vaultToSwitchToName) {
+			// TODO: report error that the specified vault is already the active vault
 			return;
 		}
 
-		std::string vaultToSwitchToName = args.getArg("-n");
-		// TODO: In the meta/meta file, swap the active vault's name with the name of the vault to switch to:
+		for (int i = 1; i < vaultMetaData.size(); ++i) {
+			if (vaultMetaData[i].vaultName == vaultToSwitchToName) {
+				// Find the vault to switch to and copy its metadata to the 0th position in the VaultInfo vector:
+				vaultMetaData[0] = vaultMetaData[i];
+				break;
+			}
+		}
+
+		// Write updates to the VaultInfo vector to disk:
+		writeVaultMetaData(vaultMetaData);
 
 	} else if (metaCommand == "delete") {
 		// Error if there is no active vault:
-		if (activeVaultName == "") {
+		if (vaultMetaData.empty()) {
 			std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
 			return;
 		}
+
+		const unsigned char* activeVaultHash = vaultMetaData[0].vaultSkeyHash;
+		const unsigned char* activeVaultSalt = vaultMetaData[0].vaultSkeySalt;
+		std::string activeVaultName = vaultMetaData[0].vaultName;
 
 		// TODO: Verify that vaultKey is correct and report error and exit if not
 
@@ -236,8 +278,9 @@ void processVaultCommand(const CommandLineParser& args, const std::vector<VaultI
 /**
 	Process a command that pertains to some account (or accounts) in the currently active vault
 */
-void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData)
-{
+void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData) {
+	Utils::debugPrint(std::cout, "Entered processAccountCommand\n");
+
 	if (vaultMetaData.empty()) {
 		std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
 		return;
@@ -269,8 +312,9 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 /**
 	Processes a print command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault)
-{
+void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault) {
+	Utils::debugPrint(std::cout, "Entered processAccountPrintCommand\n");
+
 	if (args.containsArg("-l")) {
 		activeVault.printTags(std::cout);
 		return;
@@ -294,8 +338,9 @@ void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVaul
 /**
 	Processes a clip command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault)
-{
+void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault) {
+	Utils::debugPrint(std::cout, "Entered processAccountClipCommand\n");
+
 	std::string accountName = args.getArg("-n");
 	if (args.containsArg("-un")) {
 		// TODO: Clip decrypted username of the given account
@@ -309,8 +354,9 @@ void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault
 /**
 	Processes an update command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault)
-{
+void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault) {
+	Utils::debugPrint(std::cout, "Entered processAccountUpdateCommand\n");
+
 	std::string accountName = args.getArg("-n");
 	if (!activeVault.exists(accountName))
 	{
@@ -323,55 +369,63 @@ void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVau
 		// Update the username of the given account
 		Account account = activeVault.getAccount(accountName);
 		account.setUsername(username);
-		activeVault.writeVault();
 	} else if (args.containsArg("-pw")) {
 		std::string password = args.getArg("-pw");
 		// Update the password of the given account
 		Account account = activeVault.getAccount(accountName);
 		account.setPassword(password);
-		activeVault.writeVault();
 	} else if (args.containsArg("-note")) {
 		std::string note = args.getArg("-note");
 		// Update the note of the given account
 		Account account = activeVault.getAccount(accountName);
 		account.setNote(note);
-		activeVault.writeVault();
 	} else if (args.containsArg("-f")) {
 		std::string filePath = args.getArg("-f");
 		// Update all details of the given account
 		Account account(accountName, filePath);
-		activeVault.writeVault();
 	} else {
 		// TODO: Error
 	}
+
+	activeVault.writeVault();
 }
 
 /**
 	Processes an add command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault)
-{
+void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault) {
+	Utils::debugPrint(std::cout, "Entered processAccountAddCommand\n");
+
 	std::string accountName = args.getArg("-n");
-	if (activeVault.exists(accountName))
-	{
+	if (activeVault.exists(accountName)) {
+		Utils::debugPrint(std::cout, "processAccountAddCommand:403\n");
+
 		// TODO: Error
 		return;
 	}
 
 	if (args.containsArg("-f")) {
+		Utils::debugPrint(std::cout, "processAccountAddCommand:410\n");
+
 		std::string filePath = args.getArg("-f");
 		// Read the new account from the specified file
 		Account account(accountName, filePath);
 		activeVault.addAccount(account);
 	} else if (args.containsArg("-un") && args.containsArg("-pw")) {
+		Utils::debugPrint(std::cout, "processAccountAddCommand:417\n");
+
 		std::string username = args.getArg("-un");
 		std::string password = args.getArg("-pw");
 		// Create a new account with the given username and password
 		Account account(accountName, username, password);
 		activeVault.addAccount(account);
 	} else {
+		Utils::debugPrint(std::cout, "processAccountAddCommand:425\n");
+
 		// Create a new account with no details
 		Account account(accountName);
 		activeVault.addAccount(account);
 	}
+
+	activeVault.writeVault();
 }
