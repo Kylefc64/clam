@@ -269,31 +269,22 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 			return;
 		}
 
-		// Search in the meta file for line to delete
-		std::ifstream fileStream("meta/meta");
-		std::string currline;
-		unsigned char currKeyHash[SKEY_LENGTH];
-		unsigned char currKeyNonce[SKEY_LENGTH];
-		std::string currVaultName;
-
-		for (int i = 0; i < vaultMetaData.size(); i++) {
-			std::getline(fileStream, currline);
-			strncpy((char *)currKeyHash, currline.substr(0,SKEY_LENGTH).c_str(), SKEY_LENGTH);
-			strncpy((char *)currKeyNonce, currline.substr(SKEY_LENGTH,SKEY_LENGTH).c_str(), SKEY_LENGTH);
-			currVaultName = currline.substr(SKEY_LENGTH*2, std::string::npos);
-			// Match found in meta file
-			if (currVaultName == vaultToDeleteName) {
+		// Search in vaultMetaData for VaultInfo to delete
+		for (int i = 1; i < vaultMetaData.size(); i++) {
+			if (vaultMetaData[i].vaultName == vaultToDeleteName) {
 				// Verify that vaultKey is correct and report error and exit if not
-				if (!Utils::verifyKey(vaultKey, currKeyNonce, currKeyHash, SKEY_LENGTH)) {
+				if (!Utils::verifyKey(vaultKey, vaultMetaData[i].vaultSkeySalt, 
+					vaultMetaData[i].vaultSkeyHash, vaultKey.size())) {
 					std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
 					return;
-				}				
+				}
 				// Remove the vault to delete's name from the meta/meta file
-				currline.replace(0, std::string::npos, "");				
+				vaultMetaData.erase(vaultMetaData.begin() + i - 1);
+				// Update vault metadata file:
+				writeVaultMetaData(vaultMetaData);
 				// Remove the vault file in the 'vaults' directory:
 				std::remove(filePathToRemove.c_str());
-
-				std::cout << currVaultName + " has been deleted."<< std::endl;
+				std::cout << vaultToDeleteName + " has been deleted."<< std::endl;
 				return;
 			}
 		}
@@ -301,6 +292,37 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		std::cout << "Error: No vault with the name of \"" + vaultToDeleteName + "\" exist" << std::endl;
 		return;
 
+		// // Search in the meta file for line to delete
+		// std::ifstream fileStream("meta/meta");
+		// std::string currline;
+		// unsigned char currKeyHash[SKEY_LENGTH];
+		// unsigned char currKeyNonce[SKEY_LENGTH];
+		// std::string currVaultName;
+
+		// for (int i = 0; i < vaultMetaData.size(); i++) {
+		// 	std::getline(fileStream, currline);
+		// 	strncpy((char *)currKeyHash, currline.substr(0,SKEY_LENGTH).c_str(), SKEY_LENGTH);
+		// 	strncpy((char *)currKeyNonce, currline.substr(SKEY_LENGTH,SKEY_LENGTH).c_str(), SKEY_LENGTH);
+		// 	currVaultName = currline.substr(SKEY_LENGTH*2, std::string::npos);
+		// 	// Match found in meta file
+		// 	if (currVaultName == vaultToDeleteName) {
+		// 		// Verify that vaultKey is correct and report error and exit if not
+		// 		if (!Utils::verifyKey(vaultKey, currKeyNonce, currKeyHash, SKEY_LENGTH)) {
+		// 			std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
+		// 			return;
+		// 		}				
+		// 		// Remove the vault to delete's name from the meta/meta file
+		// 		currline.replace(0, std::string::npos, "");				
+		// 		// Remove the vault file in the 'vaults' directory:
+		// 		std::remove(filePathToRemove.c_str());
+
+		// 		std::cout << currVaultName + " has been deleted."<< std::endl;
+		// 		return;
+		// 	}
+		// }
+		// // No match found, no vault with name equal to vaultToDeleteName exist in meta file
+		// std::cout << "Error: No vault with the name of \"" + vaultToDeleteName + "\" exist" << std::endl;
+		// return;
 
 	} else {
 		std::cout << "Error: Invalid vault command\n"
