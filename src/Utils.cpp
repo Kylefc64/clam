@@ -163,3 +163,20 @@ void Utils::debugPrint(std::ostream &outputStream, const std::string& str) {
     outputStream << str;
   }
 }
+
+bool Utils::verifyKey(std::string vaultKey, const unsigned char *salt, const unsigned char *correctHash, int keySize) {
+  unsigned char *providedKeyHash = new unsigned char[keySize];
+  unsigned char *unsaltedKeyHash = new unsigned char[keySize];
+  unsigned char *concatBuffer = new unsigned char[keySize * 2];
+
+  Utils::sha256(unsaltedKeyHash, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+  Utils::concatArr(unsaltedKeyHash, salt, keySize, keySize, concatBuffer);
+  Utils::sha256(providedKeyHash, concatBuffer, keySize * 2);
+  bool success = Utils::contentsEqual(providedKeyHash, correctHash, keySize);
+
+  delete[] providedKeyHash;
+  delete[] unsaltedKeyHash;
+  delete[] concatBuffer;
+
+  return success;
+}

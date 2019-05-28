@@ -16,6 +16,7 @@ class Utils {
 	static void debugEnable();
 	static void debugDisable();
 	static void debugPrint(std::ostream &outputStream, const std::string& str);
+	static bool verifyKey(std::string vaultKey, const unsigned char *salt, const unsigned char *correctHash, int keySize);
 private:
 	static bool debug;
 };
