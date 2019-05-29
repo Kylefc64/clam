@@ -38,7 +38,7 @@ Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool cre
 		fileStream.read((char *)iv, SKEY_LENGTH);
 
 		// Load remaining bytes (until EOF) into a byte array
-		int ciphertextSize = fileSize - 2*SKEY_LENGTH;
+		int ciphertextSize = fileSize - SKEY_LENGTH;
 		unsigned char *ciphertext = new unsigned char[ciphertextSize];
 		fileStream.read((char *)ciphertext, ciphertextSize);
 
@@ -79,11 +79,9 @@ Vault::~Vault() {
 /**
 	Print all Account tags, separated by newlines, to the output stream.
 */
-void Vault::printTags(std::ostream &outputStream) const
-{
+void Vault::printTags(std::ostream &outputStream) const {
 	std::vector<std::string> tags;
-	for (int i = 0; i < accounts.size(); ++i)
-	{
+	for (int i = 0; i < accounts.size(); ++i) {
 		outputStream << accounts[i].getTag() << '\n';
 	}
 }
@@ -135,8 +133,7 @@ void Vault::writeVault() const {
 	// Create a byte array from list of accounts:
 	std::vector<uint8_t> serializedAccountList;
 	std::vector<uint8_t> serializedAccount;
-	for (int i = 0; i < accounts.size(); ++i)
-	{
+	for (int i = 0; i < accounts.size(); ++i) {
 		serializedAccount = accounts[i].serialize();
 		serializedAccountList.insert(serializedAccountList.end(), serializedAccount.data(), serializedAccount.data() + serializedAccount.size());
 	}
@@ -162,6 +159,7 @@ void Vault::writeVault() const {
 	std::ofstream fileStream(filePath);
 	fileStream.write((char *)iv, SKEY_LENGTH);
 	fileStream.write((char *)ciphertext, plaintextSize);
+	std::cout << "Vault.cpp:162" << std::endl;
 	fileStream.close();
 
 	// Clean up memory:

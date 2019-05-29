@@ -44,7 +44,6 @@ int main(int argc, char *argv[]) {
 	}
 }
 
-// TODO: I'm not sure if numVaults assigned the approporate value here
 void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
 	Utils::debugPrint(std::cout, "Entered readVaultMetaData\n");
 
@@ -57,7 +56,7 @@ void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
 	uint32_t vaultNameSize;
 	for (int i = 0; i < numVaults; ++i) {
 		fileStream.read((char *)&vaultNameSize, sizeof(vaultNameSize)); // read vault name's size
-		vaultInfo.vaultName.reserve(vaultNameSize); // reserve vaultNameSize bytes
+		vaultInfo.vaultName.resize(vaultNameSize); // reserve vaultNameSize bytes
 		fileStream.read((char *)&vaultInfo.vaultName[0], vaultNameSize); // read vaultName from file
 		fileStream.read((char *)vaultInfo.vaultSkeyHash, SKEY_LENGTH);
 		fileStream.read((char *)vaultInfo.vaultSkeySalt, SKEY_LENGTH);
@@ -79,8 +78,8 @@ void writeVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
 	for (int i = 0; i < numVaults; ++i) {
 		vaultInfo = vaultMetaData[i];
 		vaultNameSize = vaultInfo.vaultName.size();
-		fileStream.write((char *)&vaultNameSize, sizeof(vaultNameSize)); // read vault name's size
-		fileStream.write((char *)vaultInfo.vaultName.c_str(), vaultNameSize); // read vaultName from file
+		fileStream.write((char *)&vaultNameSize, sizeof(vaultNameSize)); // write vault name's size
+		fileStream.write((char *)vaultInfo.vaultName.c_str(), vaultNameSize); // write vaultName to file
 		fileStream.write((char *)vaultInfo.vaultSkeyHash, SKEY_LENGTH);
 		fileStream.write((char *)vaultInfo.vaultSkeySalt, SKEY_LENGTH);
 	}
@@ -292,38 +291,6 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		std::cout << "Error: No vault with the name of \"" + vaultToDeleteName + "\" exist" << std::endl;
 		return;
 
-		// // Search in the meta file for line to delete
-		// std::ifstream fileStream("meta/meta");
-		// std::string currline;
-		// unsigned char currKeyHash[SKEY_LENGTH];
-		// unsigned char currKeyNonce[SKEY_LENGTH];
-		// std::string currVaultName;
-
-		// for (int i = 0; i < vaultMetaData.size(); i++) {
-		// 	std::getline(fileStream, currline);
-		// 	strncpy((char *)currKeyHash, currline.substr(0,SKEY_LENGTH).c_str(), SKEY_LENGTH);
-		// 	strncpy((char *)currKeyNonce, currline.substr(SKEY_LENGTH,SKEY_LENGTH).c_str(), SKEY_LENGTH);
-		// 	currVaultName = currline.substr(SKEY_LENGTH*2, std::string::npos);
-		// 	// Match found in meta file
-		// 	if (currVaultName == vaultToDeleteName) {
-		// 		// Verify that vaultKey is correct and report error and exit if not
-		// 		if (!Utils::verifyKey(vaultKey, currKeyNonce, currKeyHash, SKEY_LENGTH)) {
-		// 			std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
-		// 			return;
-		// 		}				
-		// 		// Remove the vault to delete's name from the meta/meta file
-		// 		currline.replace(0, std::string::npos, "");				
-		// 		// Remove the vault file in the 'vaults' directory:
-		// 		std::remove(filePathToRemove.c_str());
-
-		// 		std::cout << currVaultName + " has been deleted."<< std::endl;
-		// 		return;
-		// 	}
-		// }
-		// // No match found, no vault with name equal to vaultToDeleteName exist in meta file
-		// std::cout << "Error: No vault with the name of \"" + vaultToDeleteName + "\" exist" << std::endl;
-		// return;
-
 	} else {
 		std::cout << "Error: Invalid vault command\n"
 			<< "Valid commands are: add, update, switch, delete, list" << std::endl;
@@ -414,8 +381,7 @@ void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVau
 	Utils::debugPrint(std::cout, "Entered processAccountUpdateCommand\n");
 
 	std::string accountName = args.getArg("-n");
-	if (!activeVault.exists(accountName))
-	{
+	if (!activeVault.exists(accountName)) {
 		// TODO: Error
 		return;
 	}
@@ -454,21 +420,21 @@ void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault)
 
 	std::string accountName = args.getArg("-n");
 	if (activeVault.exists(accountName)) {
-		Utils::debugPrint(std::cout, "processAccountAddCommand:403\n");
+		Utils::debugPrint(std::cout, "processAccountAddCommand:424\n");
 
 		// TODO: Error
 		return;
 	}
 
 	if (args.containsArg("-f")) {
-		Utils::debugPrint(std::cout, "processAccountAddCommand:410\n");
+		Utils::debugPrint(std::cout, "processAccountAddCommand:431\n");
 
 		std::string filePath = args.getArg("-f");
 		// Read the new account from the specified file
 		Account account(accountName, filePath);
 		activeVault.addAccount(account);
 	} else if (args.containsArg("-un") && args.containsArg("-pw")) {
-		Utils::debugPrint(std::cout, "processAccountAddCommand:417\n");
+		Utils::debugPrint(std::cout, "processAccountAddCommand:438\n");
 
 		std::string username = args.getArg("-un");
 		std::string password = args.getArg("-pw");
@@ -476,7 +442,7 @@ void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault)
 		Account account(accountName, username, password);
 		activeVault.addAccount(account);
 	} else {
-		Utils::debugPrint(std::cout, "processAccountAddCommand:425\n");
+		Utils::debugPrint(std::cout, "processAccountAddCommand:446\n");
 
 		// Create a new account with no details
 		Account account(accountName);
