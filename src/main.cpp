@@ -238,7 +238,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 
 				// Write updates to the VaultInfo vector to disk:
 				writeVaultMetaData(vaultMetaData);
-				break;
+				return;
 			}
 		}
 
