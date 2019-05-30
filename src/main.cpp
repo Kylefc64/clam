@@ -128,6 +128,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 			std::cout << "Error: vaultMetaData is empty" << std::endl;
 		}
 		else {
+			std::cout << "current active vault: " + vaultMetaData[0].vaultName + "."<< std::endl;
 			// Skip the first one when listing because first one is a duplicate for the active vault
 			for (int i = 1; i < vaultMetaData.size(); i++) {
 				std::cout << vaultMetaData[i].vaultName << std::endl;
@@ -144,18 +145,27 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 	}
 
 	if (metaCommand == "add") {
+		if (args.getArg("-n") == "") {
+		std::cout << "Error: Must provide a new vault name to create vault." << std::endl;
+		return;
+		}
 		// Create a new vault:
 		VaultInfo newVaultInfo;
 		newVaultInfo.vaultName = args.getArg("-n");
-
+	
+		Utils::debugPrint(std::cout, newVaultInfo.vaultName + " newvaultname \n");
 		// Error if the vault already exists:
 		for (int i = 1; i < vaultMetaData.size(); i++) {
+			// Utils::debugPrint(std::cout, std::to_string(i) + " index \n");
+			// Utils::debugPrint(std::cout, vaultMetaData[i].vaultName + " name \n");
+			// Utils::debugPrint(std::cout, std::to_string(vaultMetaData[i].vaultSkeyHash[0]) + " hash \n");
+			// Utils::debugPrint(std::cout, std::to_string(vaultMetaData[i].vaultSkeySalt[0]) + " salt \n");
 			if (vaultMetaData[i].vaultName == newVaultInfo.vaultName) {
 				std::cout << "Error: A vault with the given name already exists." << std::endl;
 				return;
 			}
 		}
-
+		
 		Vault newVault(newVaultInfo.vaultName, vaultKey, true);
 		newVault.writeVault();
 
@@ -180,6 +190,10 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		if (vaultMetaData.size() == 1) {
 			vaultMetaData.push_back(newVaultInfo);
 		}
+		Utils::debugPrint(std::cout, newVaultInfo.vaultName + " new vault name \n");
+		Utils::debugPrint(std::cout, "creating new vault using key = " + vaultKey + "\n");
+		Utils::debugPrint(std::cout, std::to_string(newVaultInfo.vaultSkeyHash[0]) + " new vault hash \n");
+		Utils::debugPrint(std::cout, std::to_string(newVaultInfo.vaultSkeySalt[0]) + " new vault salt \n");
 
 		// Write the updated vault metadata to disk:
 		writeVaultMetaData(vaultMetaData);
@@ -200,6 +214,9 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		const unsigned char* activeVaultHash = vaultMetaData[0].vaultSkeyHash;
 		unsigned char* activeVaultSalt = vaultMetaData[0].vaultSkeySalt;
 		std::string activeVaultName = vaultMetaData[0].vaultName;
+		
+		// Utils::verifyKey(vaultKey, vaultMetaData[i].vaultSkeySalt, 
+		// 					vaultMetaData[i].vaultSkeyHash, SKEY_LENGTH))
 
 		// Verify that vaultKey is correct and report error and exit if not:
 		if (!Utils::verifyKey(vaultKey, activeVaultSalt, activeVaultHash, SKEY_LENGTH)) {
@@ -217,8 +234,31 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		activeVault.updateKey(newVaultKey);
 		activeVault.writeVault();
 
+		// fixed: added changes to metadata after updating vault key
+		VaultInfo UpadatedVaultInfo;
+		UpadatedVaultInfo.vaultName = activeVaultName;
+		std::memcpy(UpadatedVaultInfo.vaultSkeySalt, newSalt, SKEY_LENGTH);
+
+		// calcuate new hash for updated metadata and fill UpadatedVaultInfo.vaultSkeyHash
+		unsigned char concatBuffer[SKEY_LENGTH * 2];
+		Utils::sha256(UpadatedVaultInfo.vaultSkeyHash, (unsigned char *)newVaultKey.c_str(), newVaultKey.size());
+		Utils::concatArr(UpadatedVaultInfo.vaultSkeyHash, newSalt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
+		Utils::sha256(UpadatedVaultInfo.vaultSkeyHash, concatBuffer, SKEY_LENGTH * 2);
+
+		// Search in vaultMetaData for VaultInfo to update
+		for (int i = 1; i < vaultMetaData.size(); i++) { 
+			if (vaultMetaData[i].vaultName == activeVaultName) {
+				// overwrite the metadata of the corresponding vault, 
+				// 	along with the active vault duplicate
+				vaultMetaData[0] = UpadatedVaultInfo;
+				vaultMetaData[i] = UpadatedVaultInfo;
+				break;
+			}
+		}
+
 		// Update vault metadata file:
 		writeVaultMetaData(vaultMetaData);
+		std::cout << "Successfully updated key for vault " + activeVaultName << std::endl;
 	} else if (metaCommand == "switch") {
 		std::string vaultToSwitchToName = args.getArg("-n");
 
@@ -227,17 +267,25 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 			std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
 			return;
 		} else if (vaultMetaData[0].vaultName == vaultToSwitchToName) {
-			// TODO: report error that the specified vault is already the active vault
+			std::cout << "Error: " + vaultToSwitchToName + " is already the active vault." << std::endl;
 			return;
 		}
 
 		for (int i = 1; i < vaultMetaData.size(); ++i) {
+			// Find the vault to switch to
 			if (vaultMetaData[i].vaultName == vaultToSwitchToName) {
-				// Find the vault to switch to and copy its metadata to the 0th position in the VaultInfo vector:
+				// Validate key
+				if (!Utils::verifyKey(vaultKey, vaultMetaData[i].vaultSkeySalt, 
+					vaultMetaData[i].vaultSkeyHash, SKEY_LENGTH)) {
+					std::cout << "Error: Provided vault key is incorrect." << std::endl;
+					return;
+				}
+				// copy its metadata to the 0th position in the VaultInfo vector:
 				vaultMetaData[0] = vaultMetaData[i];
 
 				// Write updates to the VaultInfo vector to disk:
 				writeVaultMetaData(vaultMetaData);
+				std::cout << "Switched to vault " + vaultMetaData[0].vaultName + "."<< std::endl;
 				return;
 			}
 		}
@@ -267,18 +315,21 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 			std::cout << "Error: You cannot delete a vault that is currently active." << std::endl;
 			return;
 		}
-
 		// Search in vaultMetaData for VaultInfo to delete
-		for (int i = 1; i < vaultMetaData.size(); i++) {
+		for (int i = 1; i < vaultMetaData.size(); i++) { 
 			if (vaultMetaData[i].vaultName == vaultToDeleteName) {
 				// Verify that vaultKey is correct and report error and exit if not
+				// Utils::debugPrint(std::cout, vaultMetaData[i].vaultName + " saved vault name \n");
+				// Utils::debugPrint(std::cout, std::to_string(vaultMetaData[i].vaultSkeyHash[0]) + " saved vault hash \n");
+				// Utils::debugPrint(std::cout, std::to_string(vaultMetaData[i].vaultSkeySalt[0]) + " saved vault salt \n");
+				// now fixed: verifyKey inconsistency was caused by using key.length() as keylen while it should be SKEY_LENGTH
 				if (!Utils::verifyKey(vaultKey, vaultMetaData[i].vaultSkeySalt, 
-					vaultMetaData[i].vaultSkeyHash, vaultKey.size())) {
+					vaultMetaData[i].vaultSkeyHash, SKEY_LENGTH)) {
 					std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
 					return;
-				}
+				} 
 				// Remove the vault to delete's name from the meta/meta file
-				vaultMetaData.erase(vaultMetaData.begin() + i - 1);
+				vaultMetaData.erase(vaultMetaData.begin() + i);
 				// Update vault metadata file:
 				writeVaultMetaData(vaultMetaData);
 				// Remove the vault file in the 'vaults' directory:
