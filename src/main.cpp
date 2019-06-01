@@ -24,7 +24,7 @@ void writeVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
 void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &vaultMetaData);
 void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData);
 void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault);
-void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault);
+void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault, std::string vaultKey);
 void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault);
 void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault);
 
@@ -379,7 +379,7 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 	if (args.containsArg("-p")) {
 		processAccountPrintCommand(args, activeVault);
 	} else if (args.containsArg("-c")) {
-		processAccountClipCommand(args, activeVault);
+		processAccountClipCommand(args, activeVault, vaultKey);
 	} else if (args.containsArg("-u")) {
 		processAccountUpdateCommand(args, activeVault);
 	} else if (args.containsArg("-a")) {
@@ -423,7 +423,7 @@ void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVaul
 /**
 	Processes a clip command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault) {
+void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault, std::string vaultKey) {
 	Utils::debugPrint(std::cout, "Entered processAccountClipCommand\n");
 
 	std::string accountName = args.getArg("-n");
@@ -431,14 +431,22 @@ void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault
 		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
 		return;
 	}
+	// TODO: Check if xclip is installed, if not, prompt user before running sudo apt-get install xclip
 
 	if (args.containsArg("-un")) {
-		// TODO: Clip decrypted username of the given account
+		system(("./pml -p -k " + vaultKey + " -n " + accountName + " -un | xclip -selection c").c_str());
 	} else if (args.containsArg("-pw")) {
-		// TODO: Clip decrypted password of the given account
+		system(("./pml -p -k " + vaultKey + " -n " + accountName + " -pw | xclip -selection c").c_str());
 	} else {
 		std::cout << "Error: Invalid clip option. Valid options are -un and -pw." << std::endl;
 	}
+	// https://stackoverflow.com/questions/6436257/how-do-you-copy-paste-from-the-clipboard-in-c
+	// https://stackoverflow.com/questions/40436045/in-qt-how-can-i-register-a-qstring-to-my-systems-clipboard-both-quoted-and-no/40437290#40437290
+
+	// https://linoxide.com/linux-how-to/copy-paste-commands-output-xclip-linux/
+
+	std::cout << "Copied requested content to clipboard." << std::endl;
+	return;
 }
 
 /**
