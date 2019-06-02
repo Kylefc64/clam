@@ -45,6 +45,23 @@ int main(int argc, char *argv[]) {
 	}
 }
 
+/**
+	Read all of the vault metadata into the in-memory vaultMetaData vector.
+	The metadata in the meta file is of the following format:
+
+	uint32: n = number of vaults
+	
+	uint32: s = size of the active vault's name (in bytes)
+	s bytes: name = active vault's name
+	32 bytes: active vault's hash = sha256(sha256(vaultKey) || salt)
+	32 bytes: active vault's salt = some random 32-byte value
+
+	<repeated n times>:
+		uint32: s = size of the vault's name (in bytes)
+		s bytes: name = vault's name
+		32 bytes: hash = sha256(sha256(vaultKey) || salt)
+		32 bytes: salt = some random 32-byte value
+*/
 void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
 	Utils::debugPrint(std::cout, "Entered readVaultMetaData\n");
 
@@ -66,6 +83,23 @@ void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
 	fileStream.close();
 }
 
+/**
+	Write all of the vaultMetaData vector to the vault metadata file.
+	The vault metadata is written to the file in the following format:
+
+	uint32: n = number of vaults
+	
+	uint32: s = size of the active vault's name (in bytes)
+	s bytes: name = active vault's name
+	32 bytes: active vault's hash = sha256(sha256(vaultKey) || salt)
+	32 bytes: active vault's salt = some random 32-byte value
+
+	<repeated n times>:
+		uint32: s = size of the vault's name (in bytes)
+		s bytes: name = vault's name
+		32 bytes: hash = sha256(sha256(vaultKey) || salt)
+		32 bytes: salt = some random 32-byte value
+*/
 void writeVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
 	Utils::debugPrint(std::cout, "Entered writeVaultMetaData\n");
 
