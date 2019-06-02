@@ -24,12 +24,12 @@ void writeVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
 void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &vaultMetaData);
 void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData);
 void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault);
-void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault, std::string vaultKey);
+void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault);
 void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault);
 void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault);
 
 int main(int argc, char *argv[]) {
-	//Utils::debugDisable();
+	Utils::debugDisable();
 	Utils::debugPrint(std::cout, "Entered main\n");
 
 	std::vector<VaultInfo> vaultMetaData;
@@ -379,7 +379,7 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 	if (args.containsArg("-p")) {
 		processAccountPrintCommand(args, activeVault);
 	} else if (args.containsArg("-c")) {
-		processAccountClipCommand(args, activeVault, vaultKey);
+		processAccountClipCommand(args, activeVault);
 	} else if (args.containsArg("-u")) {
 		processAccountUpdateCommand(args, activeVault);
 	} else if (args.containsArg("-a")) {
@@ -423,7 +423,7 @@ void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVaul
 /**
 	Processes a clip command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault, std::string vaultKey) {
+void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault) {
 	Utils::debugPrint(std::cout, "Entered processAccountClipCommand\n");
 
 	std::string accountName = args.getArg("-n");
@@ -431,12 +431,12 @@ void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault
 		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
 		return;
 	}
-	// TODO: Check if xclip is installed, if not, prompt user before running sudo apt-get install xclip
 
+	// TODO: How to get xclip to not add a newline to end of copied string??
 	if (args.containsArg("-un")) {
-		system(("./pml -p -k " + vaultKey + " -n " + accountName + " -un | xclip -selection c").c_str());
+		system(("echo " + activeVault.getAccount(accountName).getUsername() + " | xclip -selection c").c_str());
 	} else if (args.containsArg("-pw")) {
-		system(("./pml -p -k " + vaultKey + " -n " + accountName + " -pw | xclip -selection c").c_str());
+		system(("echo " + activeVault.getAccount(accountName).getPassword() + " | xclip -selection c").c_str());
 	} else {
 		std::cout << "Error: Invalid clip option. Valid options are -un and -pw." << std::endl;
 	}

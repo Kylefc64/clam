@@ -19,6 +19,8 @@ public:
 	bool exists(const std::string &tag);
 	void writeVault() const;
 	void updateKey(const std::string &newKey);
+	std::string getVaultName() const;
+	std::string getVaultKey() const;
 private:
 	std::string vaultName;
 	std::string vaultKey;

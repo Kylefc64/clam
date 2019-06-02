@@ -1,6 +1,5 @@
 This file contains a list of planned tasks for this project.
 
-* Implement account clip (-c) commands
 * Think of ways to optimize/improve/refactor/clean up existing code
 * Create a "--help" command which lists all available commands
 * Create unit tests that enable us to automatically verify that each command works properly

@@ -170,3 +170,11 @@ void Vault::writeVault() const {
 void Vault::updateKey(const std::string &newKey) {
 	vaultKey = newKey;
 }
+
+std::string Vault::getVaultName() const {
+	return vaultName;
+}
+
+std::string Vault::getVaultKey() const {
+	return vaultKey;
+}
