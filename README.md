@@ -56,3 +56,8 @@ A light, terminal-based application for securely managing all of your account pa
     * Adds a new account with no details to the active vault
 * pml -a -k <vault key> -n <acct name> -un <username> -pw <password>
     * Add a new account with the given username & password to the active vault
+
+
+## Application Dependencies:
+* libtomcrypt (libtomcrypt-dev package)
+* xclip
