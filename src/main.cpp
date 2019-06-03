@@ -158,6 +158,8 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 
 	std::string metaCommand = args.getOpt(CommandLineOptions::VAULT_OPTION);
 	if (metaCommand == "list") {
+		// TODO: Must check for added list options (see section 1 of README)...
+
 		// Check that vaultMetaData is not empty
 		if (vaultMetaData.empty()) {
 			std::cout << "Error: vaultMetaData is empty" << std::endl;
