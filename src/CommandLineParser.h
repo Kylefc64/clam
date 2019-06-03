@@ -4,32 +4,30 @@
 #include <string>
 #include <map>
 
-// getopt and getopt_long documentation: https://www.gnu.org/software/libc/manual/html_node/Getopt.html
-
 enum CommandLineOptions {
-	VAULT_OPTION, // -v or --vault
-	KEY_OPTION, // -k or --key
-	NAME_OPTION, // -n or --name
-	USERNAME_OPTION, // --un or --username
-	PASSWORD_OPTION, // --pw or --password
-	NOTE_OPTION, // --note
-	CLIP_OPTION, // -c or --clip
-	PRINT_OPTION, // -p or --print
-	UPDATE_OPTION, // -u or --update
-	NEWKEY_OPTION, // --knew or --newkey
-	FILE_OPTION, // -f or --file
-	DELETE_OPTION, // -d or --delete
-	ADD_OPTION, // -a or --add
-	INFO_OPTION, // -i or --info
+	VAULT_OPTION = 'v', // -v or --vault
+	KEY_OPTION = 'k', // -k or --key
+	NAME_OPTION = 'n', // -n or --name
+	USERNAME_OPTION = 'z' + 1000, // --un or --username
+	PASSWORD_OPTION = 'z' + 1001, // --pw or --password
+	NOTE_OPTION = 'z' + 1002, // ---note
+	CLIP_OPTION = 'c', // -c or --clip
+	PRINT_OPTION = 'p', // -p or --print
+	UPDATE_OPTION = 'u', // -u or --update
+	NEWKEY_OPTION = 'z' + 1003, // --knew or --newkey
+	FILE_OPTION = 'f', // -f or --file
+	DELETE_OPTION = 'd', // -d or --delete
+	ADD_OPTION = 'a', // -a or --add
+	INFO_OPTION = 'i', // -i or --info
 };
 
 class CommandLineParser {
 public:
 	CommandLineParser(int argc, char **argv);
-	bool containsOpt(const std::string& arg) const;
-	std::string getOpt(const std::string& arg) const;
+	bool containsOpt(CommandLineOptions opt) const;
+	std::string getOpt(CommandLineOptions opt) const;
 private:
-	std::map<std::string, std::string> argMap;
+	std::map<CommandLineOptions, std::string> optMap;
 };
 
 #endif
