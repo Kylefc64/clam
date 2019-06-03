@@ -2,7 +2,12 @@
 
 #include <vector>
 
+#include <getopt.h>
+
 CommandLineParser::CommandLineParser(int argc, char **argv) {
+
+
+	
 	std::vector<std::string> tokens;
 	for (int i = 1; i < argc; ++i) {
 		tokens.push_back(std::string(argv[i]));
@@ -19,13 +24,14 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 			}
 		}
 	}
+	
 }
 
-bool CommandLineParser::containsArg(const std::string& arg) const {
+bool CommandLineParser::containsOpt(const std::string& arg) const {
 	return argMap.find(arg) != argMap.end();
 }
 
-std::string CommandLineParser::getArg(const std::string& arg) const {
+std::string CommandLineParser::getOpt(const std::string& arg) const {
 	if (argMap.find(arg) != argMap.end()) {
 		return argMap.at(arg);
 	} else {

@@ -28,7 +28,7 @@ clean:
 	rm $(PROG) $(OBJS)
 
 run:
-	cd build; ./$(PROG)
+	./$(PROG)
 
 .PHONY:
 	clean run clean

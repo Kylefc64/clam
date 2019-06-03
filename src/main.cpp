@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 	initialize(vaultMetaData);
 
 	CommandLineParser cmdLineParser(argc, argv);
-	if (cmdLineParser.containsArg("-v")) {
+	if (cmdLineParser.containsOpt("-v")) {
 		// This is a vault command
 		processVaultCommand(cmdLineParser, vaultMetaData);
 	} else {
@@ -156,7 +156,7 @@ void initialize(std::vector<VaultInfo> &vaultMetaData) {
 void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &vaultMetaData) {	
 	Utils::debugPrint(std::cout, "Entered processVaultCommand\n");
 
-	std::string metaCommand = args.getArg("-v");
+	std::string metaCommand = args.getOpt("-v");
 	if (metaCommand == "list") {
 		// Check that vaultMetaData is not empty
 		if (vaultMetaData.empty()) {
@@ -172,7 +172,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		return;
 	}
 
-	std::string vaultKey = args.getArg("-k");
+	std::string vaultKey = args.getOpt("-k");
 	if (vaultKey == "") {
 		std::cout << "Error: Vault key must be provided to make changes to a vault." << std::endl;
 		return;
@@ -181,7 +181,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 	if (metaCommand == "add") {
 		// Create a new vault:
 		VaultInfo newVaultInfo;
-		newVaultInfo.vaultName = args.getArg("-n");
+		newVaultInfo.vaultName = args.getOpt("-n");
 		if (newVaultInfo.vaultName == "") {
 			std::cout << "Error: You must provide an account name using the -n option." << std::endl;
 			return;
@@ -239,7 +239,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		}
 
 		// Verify that vaultKey is correct and report error and exit if not
-		std::string newVaultKey = args.getArg("-knew");
+		std::string newVaultKey = args.getOpt("-knew");
 		if (newVaultKey == "") {
 			std::cout << "Error: New vault key must be provided to update vault key" << std::endl;
 			return;
@@ -294,7 +294,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		writeVaultMetaData(vaultMetaData);
 		std::cout << "Successfully updated key for vault " + activeVaultName << std::endl;
 	} else if (metaCommand == "switch") {
-		std::string vaultToSwitchToName = args.getArg("-n");
+		std::string vaultToSwitchToName = args.getOpt("-n");
 		if (vaultToSwitchToName == "") {
 			std::cout << "Error: Must provide the name of the vault to which you wish to switch to." << std::endl;
 		}
@@ -340,7 +340,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		const unsigned char* activeVaultSalt = vaultMetaData[0].vaultSkeySalt;
 		std::string activeVaultName = vaultMetaData[0].vaultName;
 
-		std::string vaultToDeleteName = args.getArg("-n");
+		std::string vaultToDeleteName = args.getOpt("-n");
 		if (vaultToDeleteName == "") {
 			std::cout << "Error: You must specify which vault to delete." << std::endl;
 			return;
@@ -386,7 +386,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 }
 
 /**
-	Processes a command that pertains to some account (or accounts) in the currently active vault.
+	Processes a command that pertains to some account in the currently active vault.
 */
 void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData) {
 	Utils::debugPrint(std::cout, "Entered processAccountCommand\n");
@@ -396,7 +396,7 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 		return;
 	}
 
-	std::string vaultKey = args.getArg("-k");
+	std::string vaultKey = args.getOpt("-k");
 	if (vaultKey == "") {
 		std::cout << "Error: Vault key must be provided to access the active vault's accounts." << std::endl;
 		return;
@@ -410,13 +410,13 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 
 	// Attempt to load and decrypt vault:
 	Vault activeVault(vaultMetaData[0].vaultName, vaultKey);
-	if (args.containsArg("-p")) {
+	if (args.containsOpt("-p")) {
 		processAccountPrintCommand(args, activeVault);
-	} else if (args.containsArg("-c")) {
+	} else if (args.containsOpt("-c")) {
 		processAccountClipCommand(args, activeVault);
-	} else if (args.containsArg("-u")) {
+	} else if (args.containsOpt("-u")) {
 		processAccountUpdateCommand(args, activeVault);
-	} else if (args.containsArg("-a")) {
+	} else if (args.containsOpt("-a")) {
 		processAccountAddCommand(args, activeVault);
 	} else {
 		std::cout << "Error: Invalid account command. Valid command options are: -p, -c, -u, -a" << std::endl;
@@ -430,21 +430,21 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault) {
 	Utils::debugPrint(std::cout, "Entered processAccountPrintCommand\n");
 
-	if (args.containsArg("-l")) {
+	if (args.containsOpt("-l")) {
 		activeVault.printTags(std::cout);
 		return;
 	}
 
-	std::string accountName = args.getArg("-n");
+	std::string accountName = args.getOpt("-p");
 	if (accountName == "") {
 		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
 		return;
 	}
-	if (args.containsArg("-un")) {
+	if (args.containsOpt("-un")) {
 		std::cout << activeVault.getAccount(accountName).getUsername() << std::endl;
-	} else if (args.containsArg("-pw")) {
+	} else if (args.containsOpt("-pw")) {
 		std::cout << activeVault.getAccount(accountName).getPassword() << std::endl;
-	} else if (args.containsArg("-note")) {
+	} else if (args.containsOpt("-note")) {
 		std::cout << activeVault.getAccount(accountName).getNote() << std::endl;
 	} else {
 		const Account account = activeVault.getAccount(accountName);
@@ -460,16 +460,16 @@ void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVaul
 void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault) {
 	Utils::debugPrint(std::cout, "Entered processAccountClipCommand\n");
 
-	std::string accountName = args.getArg("-n");
+	std::string accountName = args.getOpt("-c");
 	if (accountName == "") {
 		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
 		return;
 	}
 
 	// TODO: How to get xclip to not add a newline to end of copied string??
-	if (args.containsArg("-un")) {
+	if (args.containsOpt("-un")) {
 		system(("echo " + activeVault.getAccount(accountName).getUsername() + " | xclip -selection c").c_str());
-	} else if (args.containsArg("-pw")) {
+	} else if (args.containsOpt("-pw")) {
 		system(("echo " + activeVault.getAccount(accountName).getPassword() + " | xclip -selection c").c_str());
 	} else {
 		std::cout << "Error: Invalid clip option. Valid options are -un and -pw." << std::endl;
@@ -489,7 +489,7 @@ void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault
 void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault) {
 	Utils::debugPrint(std::cout, "Entered processAccountUpdateCommand\n");
 
-	std::string accountName = args.getArg("-n");
+	std::string accountName = args.getOpt("-u");
 	if (accountName == "") {
 		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
 		return;
@@ -500,23 +500,23 @@ void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVau
 		return;
 	}
 
-	if (args.containsArg("-un")) {
-		std::string username = args.getArg("-un");
+	if (args.containsOpt("-un")) {
+		std::string username = args.getOpt("-un");
 		// Update the username of the given account
 		Account *account = &activeVault.getAccount(accountName);
 		account->setUsername(username);
-	} else if (args.containsArg("-pw")) {
-		std::string password = args.getArg("-pw");
+	} else if (args.containsOpt("-pw")) {
+		std::string password = args.getOpt("-pw");
 		// Update the password of the given account
 		Account *account = &activeVault.getAccount(accountName);
 		account->setPassword(password);
-	} else if (args.containsArg("-note")) {
-		std::string note = args.getArg("-note");
+	} else if (args.containsOpt("-note")) {
+		std::string note = args.getOpt("-note");
 		// Update the note of the given account
 		Account *account = &activeVault.getAccount(accountName);
 		account->setNote(note);
-	} else if (args.containsArg("-f")) {
-		std::string filePath = args.getArg("-f");
+	} else if (args.containsOpt("-f")) {
+		std::string filePath = args.getOpt("-f");
 		// Update all details of the given account
 		Account account(accountName, filePath);
 		activeVault.addAccount(account);
@@ -534,7 +534,7 @@ void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVau
 void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault) {
 	Utils::debugPrint(std::cout, "Entered processAccountAddCommand\n");
 
-	std::string accountName = args.getArg("-n");
+	std::string accountName = args.getOpt("-a");
 	if (accountName == "") {
 		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
 		return;
@@ -545,14 +545,14 @@ void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault)
 		return;
 	}
 
-	if (args.containsArg("-f")) {
-		std::string filePath = args.getArg("-f");
+	if (args.containsOpt("-f")) {
+		std::string filePath = args.getOpt("-f");
 		// Read the new account from the specified file
 		Account account(accountName, filePath);
 		activeVault.addAccount(account);
-	} else if (args.containsArg("-un") && args.containsArg("-pw")) {
-		std::string username = args.getArg("-un");
-		std::string password = args.getArg("-pw");
+	} else if (args.containsOpt("-un") && args.containsOpt("-pw")) {
+		std::string username = args.getOpt("-un");
+		std::string password = args.getOpt("-pw");
 		// Create a new account with the given username and password
 		Account account(accountName, username, password);
 		activeVault.addAccount(account);
