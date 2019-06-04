@@ -157,14 +157,12 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 	Utils::debugPrint(std::cout, "Entered processVaultCommand\n");
 
 	std::string metaCommand = args.getOpt(CommandLineOptions::VAULT_OPTION);
-	if (metaCommand == "list") {
-		// TODO: Must check for added list options (see section 1 of README)...
-
+	if (metaCommand == "list" && !args.containsOpt(CommandLineOptions::KEY_OPTION)) {
 		// Check that vaultMetaData is not empty
 		if (vaultMetaData.empty()) {
 			std::cout << "Error: vaultMetaData is empty" << std::endl;
 		} else {
-			std::cout << "Current active vault: " + vaultMetaData[0].vaultName + "."<< std::endl;
+			std::cout << "Current active vault: " + vaultMetaData[0].vaultName + "." << std::endl;
 			// Skip the first one when listing because first one is a duplicate for the active vault
 			for (int i = 1; i < vaultMetaData.size(); i++) {
 				std::cout << vaultMetaData[i].vaultName << std::endl;
@@ -380,6 +378,19 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		std::cout << "Error: No vault with the name of \"" + vaultToDeleteName + "\" exist" << std::endl;
 		return;
 
+	} else if (metaCommand == "list") {
+		if (!Utils::verifyKey(vaultKey, vaultMetaData[0].vaultSkeySalt, 
+					vaultMetaData[0].vaultSkeyHash, SKEY_LENGTH)) {
+					std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
+					return;
+		}
+		Vault activeVault(vaultMetaData[0].vaultName, vaultKey);
+
+		if (args.containsOpt(CommandLineOptions::INFO_OPTION)) {
+			activeVault.printInfo(std::cout);
+		} else {
+			activeVault.printTags(std::cout);
+		}
 	} else {
 		std::cout << "Error: Invalid vault command\n"
 			<< "Valid commands are: add, update, switch, delete, list" << std::endl;
@@ -431,12 +442,6 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 */
 void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault) {
 	Utils::debugPrint(std::cout, "Entered processAccountPrintCommand\n");
-
-	// TODO: Move to processVaultCommand "list" option:
-	// if (args.containsOpt("-l")) {
-	// 	activeVault.printTags(std::cout);
-	// 	return;
-	// }
 
 	std::string accountName = args.getOpt(CommandLineOptions::PRINT_OPTION);
 	if (accountName == "") {

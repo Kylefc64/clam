@@ -8,7 +8,7 @@
 
 CommandLineParser::CommandLineParser(int argc, char **argv) {
 	struct option long_options[] = {
-		{"vault",    no_argument, 0, CommandLineOptions::VAULT_OPTION},
+		{"vault",    required_argument, 0, CommandLineOptions::VAULT_OPTION},
 		{"key",    required_argument, 0, CommandLineOptions::KEY_OPTION},
 		{"name",    required_argument, 0, CommandLineOptions::NAME_OPTION},
 		{"username",    optional_argument, 0, CommandLineOptions::USERNAME_OPTION},
@@ -35,7 +35,7 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 		/* getopt_long stores the option index here. */
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "vk:n:c:p:u:f:d:a:i",
+		c = getopt_long(argc, argv, "v:k:n:c:p:u:f:d:a:i",
 		               long_options, &option_index);
 
 		/* Detect the end of the options. */
@@ -57,7 +57,7 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 		  	break;
 
 		case CommandLineOptions::VAULT_OPTION:
-			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::VAULT_OPTION, ""));
+			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::VAULT_OPTION, optarg));
 			break;
 
 		case CommandLineOptions::KEY_OPTION:

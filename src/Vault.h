@@ -14,6 +14,7 @@ public:
 	Vault(const std::string &vaultName, const std::string &vaultKey, bool create=false);
 	~Vault();
 	void printTags(std::ostream &outputStream) const;
+	void printInfo(std::ostream &outputStream) const;
 	Account& getAccount(const std::string &tag);
 	void addAccount(Account account);
 	bool exists(const std::string &tag);

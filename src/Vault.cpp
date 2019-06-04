@@ -80,9 +80,20 @@ Vault::~Vault() {
 	Print all Account tags, separated by newlines, to the output stream.
 */
 void Vault::printTags(std::ostream &outputStream) const {
-	std::vector<std::string> tags;
 	for (int i = 0; i < accounts.size(); ++i) {
 		outputStream << accounts[i].getTag() << '\n';
+	}
+}
+
+/**
+	Print all nicely formatted Account info to the output stream.
+*/
+void Vault::printInfo(std::ostream &outputStream) const {
+	for (int i = 0; i < accounts.size(); ++i) {
+		outputStream << "Account " << i << " tag: " << accounts[i].getTag() << '\n'
+			<< "Account " << i << " username: " << accounts[i].getUsername() << '\n'
+			<< "Account " << i << " password: " << accounts[i].getPassword() << '\n'
+			<< "Account " << i << " note: " << accounts[i].getNote() << '\n';
 	}
 }
 
