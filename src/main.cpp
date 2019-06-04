@@ -21,12 +21,16 @@ struct VaultInfo {
 void initialize(std::vector<VaultInfo> &vaultMetaData);
 void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
 void writeVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
-void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &vaultMetaData);
-void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData);
-void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault);
-void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault);
-void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault);
-void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault);
+std::string getVaultKey(const CommandLineParser& commandOpts);
+std::string getAccountName(const CommandLineParser& commandOpts);
+bool validateKey(std::string key, const unsigned char *salt, const unsigned char *hash);
+
+void processVaultCommand(const CommandLineParser& commandOpts, std::vector<VaultInfo> &vaultMetaData);
+void processAccountCommand(const CommandLineParser& commandOpts, const std::vector<VaultInfo> &vaultMetaData);
+void processAccountPrintCommand(const CommandLineParser& commandOpts, Vault &activeVault);
+void processAccountClipCommand(const CommandLineParser& commandOpts, Vault &activeVault);
+void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &activeVault);
+void processAccountAddCommand(const CommandLineParser& commandOpts, Vault &activeVault);
 
 int main(int argc, char *argv[]) {
 	Utils::debugDisable();
@@ -35,13 +39,39 @@ int main(int argc, char *argv[]) {
 	std::vector<VaultInfo> vaultMetaData;
 	initialize(vaultMetaData);
 
-	CommandLineParser cmdLineParser(argc, argv);
-	if (cmdLineParser.containsOpt(CommandLineOptions::VAULT_OPTION)) {
+	CommandLineParser commandOpts(argc, argv);
+	if (commandOpts.containsOpt(CommandLineOptions::VAULT_OPTION)) {
 		// This is a vault command
-		processVaultCommand(cmdLineParser, vaultMetaData);
+		processVaultCommand(commandOpts, vaultMetaData);
 	} else {
 		// This is a command that pertains to some account (or accounts) in the currently active vault
-		processAccountCommand(cmdLineParser, vaultMetaData);
+		processAccountCommand(commandOpts, vaultMetaData);
+	}
+}
+
+/**
+	Reads all vault metadata from the meta/meta file and creates the meta and vaults
+	directories if they do not yet exist. Stores all vault metadata in the 'vaultMetaData'
+	vector.
+*/
+void initialize(std::vector<VaultInfo> &vaultMetaData) {
+	Utils::debugPrint(std::cout, "Entered initialize\n");
+
+	struct stat info;
+	if (((stat("meta", &info) != 0)) ||
+		((stat("vaults", &info) != 0))) {
+		// meta or vaults directories do not exist:
+		
+		// Create empty meta and vaults directories:
+		system("mkdir meta/");
+		system("mkdir vaults/");
+		//system("touch meta/meta");
+		//system("touch vaults/default");
+	} else if ((stat("meta/meta", &info) != 0)) {
+		// meta/meta file does not exist:
+	} else {
+		// Read meta/meta file:
+		readVaultMetaData(vaultMetaData);
 	}
 }
 
@@ -122,42 +152,49 @@ void writeVaultMetaData(std::vector<VaultInfo> &vaultMetaData) {
 }
 
 /**
-	Reads all vault metadata from the meta/meta file and creates the meta and vaults
-	directories if they do not yet exist. Stores all vault metadata in the 'vaultMetaData'
-	vector.
+	Attempts to retrieve the KEY_OPTION parameter from the command options and
+	reports a generic error if the option does not exist.
 */
-void initialize(std::vector<VaultInfo> &vaultMetaData) {
-	Utils::debugPrint(std::cout, "Entered initialize\n");
-
-	struct stat info;
-	if (((stat("meta", &info) != 0)) ||
-		((stat("vaults", &info) != 0))) {
-		// meta or vaults directories do not exist:
-		
-		// Create empty meta and vaults directories:
-		system("mkdir meta/");
-		system("mkdir vaults/");
-		//system("touch meta/meta");
-		//system("touch vaults/default");
-	} else if ((stat("meta/meta", &info) != 0)) {
-		// meta/meta file does not exist:
-	} else {
-		// Read meta/meta file:
-		readVaultMetaData(vaultMetaData);
-
-		// // Assume that there never exists a meta/meta file containing no data or with 0 length:
-		// return vaultMetaData[0].vaultName; // the active vault is first
+std::string getVaultKey(const CommandLineParser& commandOpts) {
+	std::string vaultKey = commandOpts.getOpt(CommandLineOptions::KEY_OPTION);
+	if (vaultKey == "") {
+		std::cout << "Error: You must provide a vault key using the -k option." << std::endl;
 	}
+	return vaultKey;
+}
+
+/**
+	Attempts to retrieve the NAME_OPTION parameter from the command options and
+	reports a generic error if the option does not exist.
+*/
+std::string getAccountName(const CommandLineParser& commandOpts) {
+	std::string name = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
+	if (name == "") {
+		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
+	}
+	return name;
+}
+
+/**
+	Returns true if the provided vaultKey verifies using the given salt and salted hash values.
+	Returns False and reports an error otherwise.
+*/
+bool validateKey(std::string key, const unsigned char *salt, const unsigned char *hash) {
+	if (!Utils::verifyKey(key, salt, hash, SKEY_LENGTH)) {
+		std::cout << "Error: The provided vault key is incorrect." << std::endl;
+		return false;
+	}
+	return true;
 }
 
 /**
 	Process a command that pertains to an entire vault.
 */
-void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &vaultMetaData) {	
+void processVaultCommand(const CommandLineParser& commandOpts, std::vector<VaultInfo> &vaultMetaData) {	
 	Utils::debugPrint(std::cout, "Entered processVaultCommand\n");
 
-	std::string metaCommand = args.getOpt(CommandLineOptions::VAULT_OPTION);
-	if (metaCommand == "list" && !args.containsOpt(CommandLineOptions::KEY_OPTION)) {
+	std::string metaCommand = commandOpts.getOpt(CommandLineOptions::VAULT_OPTION);
+	if (metaCommand == "list" && !commandOpts.containsOpt(CommandLineOptions::KEY_OPTION)) {
 		// Check that vaultMetaData is not empty
 		if (vaultMetaData.empty()) {
 			std::cout << "Error: vaultMetaData is empty" << std::endl;
@@ -172,18 +209,14 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		return;
 	}
 
-	std::string vaultKey = args.getOpt(CommandLineOptions::KEY_OPTION);
-	if (vaultKey == "") {
-		std::cout << "Error: Vault key must be provided to make changes to a vault." << std::endl;
-		return;
-	}
+	std::string vaultKey = getVaultKey(commandOpts);
 
 	if (metaCommand == "add") {
 		// Create a new vault:
 		VaultInfo newVaultInfo;
-		newVaultInfo.vaultName = args.getOpt(CommandLineOptions::NAME_OPTION);
+		newVaultInfo.vaultName = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
 		if (newVaultInfo.vaultName == "") {
-			std::cout << "Error: You must provide an account name using the -n option." << std::endl;
+			std::cout << "Error: You must provide a vault name using the -n option." << std::endl;
 			return;
 		}
 	
@@ -239,7 +272,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		}
 
 		// Verify that vaultKey is correct and report error and exit if not
-		std::string newVaultKey = args.getOpt(CommandLineOptions::NEWKEY_OPTION);
+		std::string newVaultKey = commandOpts.getOpt(CommandLineOptions::NEWKEY_OPTION);
 		if (newVaultKey == "") {
 			std::cout << "Error: New vault key must be provided to update vault key" << std::endl;
 			return;
@@ -248,13 +281,9 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		const unsigned char* activeVaultHash = vaultMetaData[0].vaultSkeyHash;
 		unsigned char* activeVaultSalt = vaultMetaData[0].vaultSkeySalt;
 		std::string activeVaultName = vaultMetaData[0].vaultName;
-		
-		// Utils::verifyKey(vaultKey, vaultMetaData[i].vaultSkeySalt, 
-		// 					vaultMetaData[i].vaultSkeyHash, SKEY_LENGTH))
 
 		// Verify that vaultKey is correct and report error and exit if not:
-		if (!Utils::verifyKey(vaultKey, activeVaultSalt, activeVaultHash, SKEY_LENGTH)) {
-			std::cout << "Error: Provided vault key is incorrect" << std::endl;
+		if (!validateKey(vaultKey, activeVaultSalt, activeVaultHash)) {
 			return;
 		}
 
@@ -294,7 +323,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		writeVaultMetaData(vaultMetaData);
 		std::cout << "Successfully updated key for vault " + activeVaultName << std::endl;
 	} else if (metaCommand == "switch") {
-		std::string vaultToSwitchToName = args.getOpt(CommandLineOptions::NAME_OPTION);
+		std::string vaultToSwitchToName = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
 		if (vaultToSwitchToName == "") {
 			std::cout << "Error: Must provide the name of the vault to which you wish to switch to." << std::endl;
 		}
@@ -312,9 +341,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 			// Find the vault to switch to
 			if (vaultMetaData[i].vaultName == vaultToSwitchToName) {
 				// Validate key
-				if (!Utils::verifyKey(vaultKey, vaultMetaData[i].vaultSkeySalt, 
-					vaultMetaData[i].vaultSkeyHash, SKEY_LENGTH)) {
-					std::cout << "Error: Provided vault key is incorrect." << std::endl;
+				if (!validateKey(vaultKey, vaultMetaData[i].vaultSkeySalt, vaultMetaData[i].vaultSkeyHash)) {
 					return;
 				}
 				// copy its metadata to the 0th position in the VaultInfo vector:
@@ -340,7 +367,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		const unsigned char* activeVaultSalt = vaultMetaData[0].vaultSkeySalt;
 		std::string activeVaultName = vaultMetaData[0].vaultName;
 
-		std::string vaultToDeleteName = args.getOpt(CommandLineOptions::NAME_OPTION);
+		std::string vaultToDeleteName = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
 		if (vaultToDeleteName == "") {
 			std::cout << "Error: You must specify which vault to delete." << std::endl;
 			return;
@@ -355,13 +382,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		for (int i = 1; i < vaultMetaData.size(); i++) { 
 			if (vaultMetaData[i].vaultName == vaultToDeleteName) {
 				// Verify that vaultKey is correct and report error and exit if not
-				// Utils::debugPrint(std::cout, vaultMetaData[i].vaultName + " saved vault name \n");
-				// Utils::debugPrint(std::cout, std::to_string(vaultMetaData[i].vaultSkeyHash[0]) + " saved vault hash \n");
-				// Utils::debugPrint(std::cout, std::to_string(vaultMetaData[i].vaultSkeySalt[0]) + " saved vault salt \n");
-				// now fixed: verifyKey inconsistency was caused by using key.length() as keylen while it should be SKEY_LENGTH
-				if (!Utils::verifyKey(vaultKey, vaultMetaData[i].vaultSkeySalt, 
-					vaultMetaData[i].vaultSkeyHash, SKEY_LENGTH)) {
-					std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
+				if (!validateKey(vaultKey, vaultMetaData[i].vaultSkeySalt, vaultMetaData[i].vaultSkeyHash)) {
 					return;
 				} 
 				// Remove the vault to delete's name from the meta/meta file
@@ -379,14 +400,12 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 		return;
 
 	} else if (metaCommand == "list") {
-		if (!Utils::verifyKey(vaultKey, vaultMetaData[0].vaultSkeySalt, 
-					vaultMetaData[0].vaultSkeyHash, SKEY_LENGTH)) {
-					std::cout << "Error: Provided vaultKey is incorrect" << std::endl;
-					return;
+		if (!validateKey(vaultKey, vaultMetaData[0].vaultSkeySalt, vaultMetaData[0].vaultSkeyHash)) {
+			return;
 		}
 		Vault activeVault(vaultMetaData[0].vaultName, vaultKey);
 
-		if (args.containsOpt(CommandLineOptions::INFO_OPTION)) {
+		if (commandOpts.containsOpt(CommandLineOptions::INFO_OPTION)) {
 			activeVault.printInfo(std::cout);
 		} else {
 			activeVault.printTags(std::cout);
@@ -401,7 +420,7 @@ void processVaultCommand(const CommandLineParser& args, std::vector<VaultInfo> &
 /**
 	Processes a command that pertains to some account in the currently active vault.
 */
-void processAccountCommand(const CommandLineParser& args, const std::vector<VaultInfo> &vaultMetaData) {
+void processAccountCommand(const CommandLineParser& commandOpts, const std::vector<VaultInfo> &vaultMetaData) {
 	Utils::debugPrint(std::cout, "Entered processAccountCommand\n");
 
 	if (vaultMetaData.empty()) {
@@ -409,28 +428,23 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 		return;
 	}
 
-	std::string vaultKey = args.getOpt(CommandLineOptions::KEY_OPTION);
-	if (vaultKey == "") {
-		std::cout << "Error: Vault key must be provided to access the active vault's accounts." << std::endl;
-		return;
-	}
+	std::string vaultKey = getVaultKey(commandOpts);
 
 	// Verify that vaultKey is correct and report error and exit if not:
-	if (!Utils::verifyKey(vaultKey, vaultMetaData[0].vaultSkeySalt, vaultMetaData[0].vaultSkeyHash, SKEY_LENGTH)) {
-		std::cout << "Error: Provided vault key is incorrect" << std::endl;
+	if (!validateKey(vaultKey, vaultMetaData[0].vaultSkeySalt, vaultMetaData[0].vaultSkeyHash)) {
 		return;
 	}
 
 	// Attempt to load and decrypt vault:
 	Vault activeVault(vaultMetaData[0].vaultName, vaultKey);
-	if (args.containsOpt(CommandLineOptions::PRINT_OPTION)) {
-		processAccountPrintCommand(args, activeVault);
-	} else if (args.containsOpt(CommandLineOptions::CLIP_OPTION)) {
-		processAccountClipCommand(args, activeVault);
-	} else if (args.containsOpt(CommandLineOptions::UPDATE_OPTION)) {
-		processAccountUpdateCommand(args, activeVault);
-	} else if (args.containsOpt(CommandLineOptions::ADD_OPTION)) {
-		processAccountAddCommand(args, activeVault);
+	if (commandOpts.containsOpt(CommandLineOptions::PRINT_OPTION)) {
+		processAccountPrintCommand(commandOpts, activeVault);
+	} else if (commandOpts.containsOpt(CommandLineOptions::CLIP_OPTION)) {
+		processAccountClipCommand(commandOpts, activeVault);
+	} else if (commandOpts.containsOpt(CommandLineOptions::UPDATE_OPTION)) {
+		processAccountUpdateCommand(commandOpts, activeVault);
+	} else if (commandOpts.containsOpt(CommandLineOptions::ADD_OPTION)) {
+		processAccountAddCommand(commandOpts, activeVault);
 	} else {
 		std::cout << "Error: Invalid account command. Valid command options are: -p, -c, -u, -a" << std::endl;
 		return;
@@ -440,19 +454,15 @@ void processAccountCommand(const CommandLineParser& args, const std::vector<Vaul
 /**
 	Processes a print command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVault) {
+void processAccountPrintCommand(const CommandLineParser& commandOpts, Vault &activeVault) {
 	Utils::debugPrint(std::cout, "Entered processAccountPrintCommand\n");
 
-	std::string accountName = args.getOpt(CommandLineOptions::PRINT_OPTION);
-	if (accountName == "") {
-		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
-		return;
-	}
-	if (args.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
+	std::string accountName = getAccountName(commandOpts);
+	if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
 		std::cout << activeVault.getAccount(accountName).getUsername() << std::endl;
-	} else if (args.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
+	} else if (commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
 		std::cout << activeVault.getAccount(accountName).getPassword() << std::endl;
-	} else if (args.containsOpt(CommandLineOptions::NOTE_OPTION)) {
+	} else if (commandOpts.containsOpt(CommandLineOptions::NOTE_OPTION)) {
 		std::cout << activeVault.getAccount(accountName).getNote() << std::endl;
 	} else {
 		const Account account = activeVault.getAccount(accountName);
@@ -465,19 +475,15 @@ void processAccountPrintCommand(const CommandLineParser& args, Vault &activeVaul
 /**
 	Processes a clip command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault) {
+void processAccountClipCommand(const CommandLineParser& commandOpts, Vault &activeVault) {
 	Utils::debugPrint(std::cout, "Entered processAccountClipCommand\n");
 
-	std::string accountName = args.getOpt(CommandLineOptions::CLIP_OPTION);
-	if (accountName == "") {
-		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
-		return;
-	}
+	std::string accountName = getAccountName(commandOpts);
 
 	// TODO: How to get xclip to not add a newline to end of copied string??
-	if (args.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
+	if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
 		system(("echo " + activeVault.getAccount(accountName).getUsername() + " | xclip -selection c").c_str());
-	} else if (args.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
+	} else if (commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
 		system(("echo " + activeVault.getAccount(accountName).getPassword() + " | xclip -selection c").c_str());
 	} else {
 		std::cout << "Error: Invalid clip option. Valid options are -un and -pw." << std::endl;
@@ -494,37 +500,33 @@ void processAccountClipCommand(const CommandLineParser& args, Vault &activeVault
 /**
 	Processes an update command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVault) {
+void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &activeVault) {
 	Utils::debugPrint(std::cout, "Entered processAccountUpdateCommand\n");
 
-	std::string accountName = args.getOpt(CommandLineOptions::UPDATE_OPTION);
-	if (accountName == "") {
-		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
-		return;
-	}
+	std::string accountName = getAccountName(commandOpts);
 
 	if (!activeVault.exists(accountName)) {
 		std::cout << "Error: The specified account does not exist. You may create an account using the -a option." << std::endl;
 		return;
 	}
 
-	if (args.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
-		std::string username = args.getOpt(CommandLineOptions::USERNAME_OPTION);
+	if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
+		std::string username = commandOpts.getOpt(CommandLineOptions::USERNAME_OPTION);
 		// Update the username of the given account
 		Account *account = &activeVault.getAccount(accountName);
 		account->setUsername(username);
-	} else if (args.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
-		std::string password = args.getOpt(CommandLineOptions::PASSWORD_OPTION);
+	} else if (commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
+		std::string password = commandOpts.getOpt(CommandLineOptions::PASSWORD_OPTION);
 		// Update the password of the given account
 		Account *account = &activeVault.getAccount(accountName);
 		account->setPassword(password);
-	} else if (args.containsOpt(CommandLineOptions::NOTE_OPTION)) {
-		std::string note = args.getOpt(CommandLineOptions::NOTE_OPTION);
+	} else if (commandOpts.containsOpt(CommandLineOptions::NOTE_OPTION)) {
+		std::string note = commandOpts.getOpt(CommandLineOptions::NOTE_OPTION);
 		// Update the note of the given account
 		Account *account = &activeVault.getAccount(accountName);
 		account->setNote(note);
-	} else if (args.containsOpt(CommandLineOptions::FILE_OPTION)) {
-		std::string filePath = args.getOpt(CommandLineOptions::FILE_OPTION);
+	} else if (commandOpts.containsOpt(CommandLineOptions::FILE_OPTION)) {
+		std::string filePath = commandOpts.getOpt(CommandLineOptions::FILE_OPTION);
 		// Update all details of the given account
 		Account account(accountName, filePath);
 		activeVault.addAccount(account);
@@ -539,28 +541,24 @@ void processAccountUpdateCommand(const CommandLineParser& args, Vault &activeVau
 /**
 	Processes an add command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountAddCommand(const CommandLineParser& args, Vault &activeVault) {
+void processAccountAddCommand(const CommandLineParser& commandOpts, Vault &activeVault) {
 	Utils::debugPrint(std::cout, "Entered processAccountAddCommand\n");
 
-	std::string accountName = args.getOpt(CommandLineOptions::ADD_OPTION);
-	if (accountName == "") {
-		std::cout << "Error: You must provide an account name using the -n option." << std::endl;
-		return;
-	}
+	std::string accountName = getAccountName(commandOpts);
 
 	if (activeVault.exists(accountName)) {
 		std::cout << "Error: There already exists an account with the specified name." << std::endl;
 		return;
 	}
 
-	if (args.containsOpt(CommandLineOptions::FILE_OPTION)) {
-		std::string filePath = args.getOpt(CommandLineOptions::FILE_OPTION);
+	if (commandOpts.containsOpt(CommandLineOptions::FILE_OPTION)) {
+		std::string filePath = commandOpts.getOpt(CommandLineOptions::FILE_OPTION);
 		// Read the new account from the specified file
 		Account account(accountName, filePath);
 		activeVault.addAccount(account);
-	} else if (args.containsOpt(CommandLineOptions::USERNAME_OPTION) && args.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
-		std::string username = args.getOpt(CommandLineOptions::USERNAME_OPTION);
-		std::string password = args.getOpt(CommandLineOptions::PASSWORD_OPTION);
+	} else if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION) && commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
+		std::string username = commandOpts.getOpt(CommandLineOptions::USERNAME_OPTION);
+		std::string password = commandOpts.getOpt(CommandLineOptions::PASSWORD_OPTION);
 		// Create a new account with the given username and password
 		Account account(accountName, username, password);
 		activeVault.addAccount(account);
