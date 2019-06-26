@@ -1,1 +1,5 @@
 *.o
+*/meta/*
+*/vaults/*
+build/pml
+test/pml

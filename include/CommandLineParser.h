@@ -10,7 +10,7 @@ enum CommandLineOptions {
 	NAME_OPTION = 'n', // -n or --name
 	USERNAME_OPTION = 'z' + 1000, // --un or --username
 	PASSWORD_OPTION = 'z' + 1001, // --pw or --password
-	NOTE_OPTION = 'z' + 1002, // ---note
+	NOTE_OPTION = 'z' + 1002, // --note
 	CLIP_OPTION = 'c', // -c or --clip
 	PRINT_OPTION = 'p', // -p or --print
 	UPDATE_OPTION = 'u', // -u or --update
