@@ -20,7 +20,7 @@ A light, terminal-based application for securely managing all of your account pa
     * Lists the account information for all accounts in the active vault in a human-readable format
 
 2. Print options
-* pml -p \<acct name\> -k \<vault key\> 
+* pml -p \<acct name\> -k \<vault key\>
     * prints (nicely formatted) all details of the given account in the active vault
 * pml -p \<acct name\> -k \<vault key\> -un
     * prints only the username of the given account in the active vault

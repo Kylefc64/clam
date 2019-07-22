@@ -3,10 +3,12 @@
 #include <vector>
 
 #include <getopt.h>
+#include <iostream>
 // getopt and getopt_long documentation: https://www.gnu.org/software/libc/manual/html_node/Getopt.html
 // how to avoid having to use "=" for options with optional arguments: https://stackoverflow.com/questions/1052746/getopt-does-not-parse-optional-arguments-to-parameters
 
 CommandLineParser::CommandLineParser(int argc, char **argv) {
+	
 	struct option long_options[] = {
 		{"vault",    required_argument, 0, CommandLineOptions::VAULT_OPTION},
 		{"key",    required_argument, 0, CommandLineOptions::KEY_OPTION},
@@ -22,7 +24,7 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 		{"newkey",    required_argument, 0, CommandLineOptions::NEWKEY_OPTION},
 		{"knew",    required_argument, 0, CommandLineOptions::NEWKEY_OPTION},
 		{"file",    required_argument, 0, CommandLineOptions::FILE_OPTION},
-		{"delete",    required_argument, 0, CommandLineOptions::DELETE_OPTION},
+		{"delete",    no_argument, 0, CommandLineOptions::DELETE_OPTION},
 		{"add",    required_argument, 0, CommandLineOptions::ADD_OPTION},
 		{"info",    no_argument, 0, CommandLineOptions::INFO_OPTION},
 		{0, 0, 0, 0}
@@ -35,7 +37,7 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 		/* getopt_long stores the option index here. */
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "v:k:n:c:p:u:f:d:a:i",
+		c = getopt_long(argc, argv, "v:k:n:c:p:u:f:a:di",
 		               long_options, &option_index);
 
 		/* Detect the end of the options. */
@@ -76,7 +78,7 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 			} else {
 				optoptarg = "";
 			}
-			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::NAME_OPTION, optoptarg));
+			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::USERNAME_OPTION, optoptarg));
 			break;
 
 		case CommandLineOptions::PASSWORD_OPTION:
@@ -87,7 +89,7 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 			} else {
 				optoptarg = "";
 			}
-			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::NAME_OPTION, optoptarg));
+			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::PASSWORD_OPTION, optoptarg));
 			break;
 
 		case CommandLineOptions::NOTE_OPTION:
@@ -98,7 +100,7 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 			} else {
 				optoptarg = "";
 			}
-			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::NAME_OPTION, optoptarg));
+			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::NOTE_OPTION, optoptarg));
 			break;
 
 		case CommandLineOptions::CLIP_OPTION:
@@ -122,7 +124,7 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 			break;
 
 		case CommandLineOptions::DELETE_OPTION:
-			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::DELETE_OPTION, optarg));
+			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::DELETE_OPTION, ""));
 			break;
 
 		case CommandLineOptions::ADD_OPTION:

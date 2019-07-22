@@ -99,7 +99,6 @@ void Account::setNote(const std::string &n) {
 	Stores and returns a serialized version of this object as a byte vector.
 */
 std::vector<uint8_t> Account::serialize() const {
-	std::cout << "username: " << username << std::endl;
 	std::vector<uint8_t> serialized;
 	uint32_t tagSize = tag.size(),
 		usernameSize = username.size(),

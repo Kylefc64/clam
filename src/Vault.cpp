@@ -170,7 +170,6 @@ void Vault::writeVault() const {
 	std::ofstream fileStream(filePath);
 	fileStream.write((char *)iv, SKEY_LENGTH);
 	fileStream.write((char *)ciphertext, plaintextSize);
-	std::cout << "Vault.cpp:162" << std::endl;
 	fileStream.close();
 
 	// Clean up memory:

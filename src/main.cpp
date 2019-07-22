@@ -249,10 +249,12 @@ void processVaultCommand(const CommandLineParser& commandOpts, std::vector<Vault
 		if (vaultMetaData.empty()) {
 			std::cout << "Error: vaultMetaData is empty" << std::endl;
 		} else {
-			std::cout << "Current active vault: " + vaultMetaData[0].vaultName + "." << std::endl;
-			// Skip the first one when listing because first one is a duplicate for the active vault
-			for (int i = 1; i < vaultMetaData.size(); i++) {
-				std::cout << vaultMetaData[i].vaultName << std::endl;
+			std::cout << vaultMetaData[0].vaultName << std::endl;
+			// Skip the active vault when listing because first one is a duplicate for the active vault
+			for (int i = 0; i < vaultMetaData.size(); i++) {
+				if (vaultMetaData[i].vaultName != vaultMetaData[0].vaultName) {
+					std::cout << vaultMetaData[i].vaultName << std::endl;
+				}
 			}
 		}
 
@@ -545,6 +547,9 @@ void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &ac
 		// Update all details of the given account
 		Account account(accountName, filePath);
 		activeVault.addAccount(account);
+	} else if (commandOpts.containsOpt(CommandLineOptions::DELETE_OPTION)) {
+		// TODO: implement account deletion
+		std::cout << "deleting account" << std::endl;
 	} else {
 		std::cout << "Error: Invalid account update option. Valid options are -un, -pw, -note, and -f." << std::endl;
 		return;
