@@ -39,34 +39,51 @@ def test_vault():
 
     exec = './pml'
 
-    add_vault_command(exec, 'vault1', 'key1')
-    add_vault_command(exec, 'vault2', 'key2')
-    add_vault_command(exec, 'vault3', 'key3')
+    vault1_name, vault1_key = 'vault1', 'key1'
+    vault2_name, vault2_key = 'vault2', 'key2'
+    vault3_name, vault3_key, vault3_newkey = 'vault3', 'key3', 'key3new'
 
-    add_command(exec, 'acct1-1', 'key1', 'un1-1', 'pw1-1', None)
-    add_command(exec, 'acct1-2', 'key1', 'un1-2', 'pw1-2', None)
-    add_command(exec, 'acct1-3', 'key1', 'un1-3', 'pw1-3', None)
+    vault1_acct1_tag, vault1_acct1_un, vault1_acct1_pw = 'acct1-1', 'un1-1', 'pw1-1'
+    vault1_acct2_tag, vault1_acct2_un, vault1_acct2_pw = 'acct1-2', 'un1-2', 'pw1-2'
+    vault1_acct3_tag, vault1_acct3_un, vault1_acct3_pw = 'acct1-3', 'un1-3', 'pw1-3'
 
-    switch_vault_command(exec, 'vault2', 'key2')
-    add_command(exec, 'acct2-1', 'key2', 'un2-1', 'pw2-1', None)
-    add_command(exec, 'acct2-2', 'key2', 'un2-2', 'pw2-2', None)
-    add_command(exec, 'acct2-3', 'key2', 'un2-3', 'pw2-3', None)
+    vault2_acct1_tag, vault2_acct1_un, vault2_acct1_pw = 'acct2-1', 'un2-1', 'pw2-1'
+    vault2_acct2_tag, vault2_acct2_un, vault2_acct2_pw = 'acct2-2', 'un2-2', 'pw2-2'
+    vault2_acct3_tag, vault2_acct3_un, vault2_acct3_pw = 'acct2-3', 'un2-3', 'pw2-3'
 
-    switch_vault_command(exec, 'vault3', 'key3')
-    add_command(exec, 'acct3-1', 'key3', 'un3-1', 'pw3-1', None)
-    add_command(exec, 'acct3-2', 'key3', 'un3-2', 'pw3-2', None)
-    add_command(exec, 'acct3-3', 'key3', 'un3-3', 'pw3-3', None)
+    vault3_acct1_tag, vault3_acct1_un, vault3_acct1_pw = 'acct3-1', 'un3-1', 'pw3-1'
+    vault3_acct2_tag, vault3_acct2_un, vault3_acct2_pw = 'acct3-2', 'un3-2', 'pw3-2'
+    vault3_acct3_tag, vault3_acct3_un, vault3_acct3_pw = 'acct3-3', 'un3-3', 'pw3-3'
+
+
+    add_vault_command(exec, vault1_name, vault1_key)
+    add_vault_command(exec, vault2_name, vault2_key)
+    add_vault_command(exec, vault3_name, vault3_key)
+
+    add_command(exec, vault1_acct1_tag, vault1_key, vault1_acct1_un, vault1_acct1_pw, None)
+    add_command(exec, vault1_acct2_tag, vault1_key, vault1_acct2_un, vault1_acct2_pw, None)
+    add_command(exec, vault1_acct3_tag, vault1_key, vault1_acct3_un, vault1_acct3_pw, None)
+
+    switch_vault_command(exec, vault2_name, vault2_key)
+    add_command(exec, vault2_acct1_tag, vault2_key, vault2_acct1_un, vault2_acct1_pw, None)
+    add_command(exec, vault2_acct2_tag, vault2_key, vault2_acct2_un, vault2_acct2_pw, None)
+    add_command(exec, vault2_acct3_tag, vault2_key, vault2_acct3_un, vault2_acct3_pw, None)
+
+    switch_vault_command(exec, vault3_name, vault3_key)
+    add_command(exec, vault3_acct1_tag, vault3_key, vault3_acct1_un, vault3_acct1_pw, None)
+    add_command(exec, vault3_acct2_tag, vault3_key, vault3_acct2_un, vault3_acct2_pw, None)
+    add_command(exec, vault3_acct3_tag, vault3_key, vault3_acct3_un, vault3_acct3_pw, None)
 
     print(list_command(exec)) # assertion here
-    print(list_command(exec, 'key3')) # assertion here
-    print(list_command(exec, 'key3', info=True)) # assertion here
+    print(list_command(exec, vault3_key)) # assertion here
+    print(list_command(exec, vault3_key, info=True)) # assertion here
 
-    update_vault_command(exec, 'key3', 'key3new')
+    update_vault_command(exec, vault3_key, vault3_newkey)
     print(list_command(exec, 'key')) # assertion here (invalid key)
-    print(list_command(exec, 'key3new')) # assertion here
+    print(list_command(exec, vault3_newkey)) # assertion here
 
-    print(delete_vault_command(exec, 'vault3', 'key3new')) # assertion here (cannot delete active vault)
-    delete_vault_command(exec, 'vault2', 'key2')
+    print(delete_vault_command(exec, vault3_name, vault3_newkey)) # assertion here (cannot delete active vault)
+    delete_vault_command(exec, vault2_name, vault2_key)
     print(list_command(exec)) # assertion here
 
     clean_dir()
@@ -140,13 +157,21 @@ def test_print():
 
     exec = './pml'
 
-    add_command(exec, 'acct1', 'key1', 'un1-1', 'pw1-1', None)
-    update_command(exec, 'acct1', 'key1', CommandLineOptions.NOTE_OPTION, 'note1')
+    acct_tag = 'acct123'
+    vault_key = 'key123'
+    username = 'username123'
+    password = 'password123'
+    note = 'note123'
 
-    print(print_command(exec, 'acct1', 'key1')) # assertion here
-    print(print_command(exec, 'acct1', 'key1', CommandLineOptions.USERNAME_OPTION)) # assertion here
-    print(print_command(exec, 'acct1', 'key1', CommandLineOptions.PASSWORD_OPTION)) # assertion here
-    print(print_command(exec, 'acct1', 'key1', CommandLineOptions.NOTE_OPTION)) # assertion here
+    add_command(exec, acct_tag, vault_key, username, password, None)
+    update_command(exec, acct_tag, vault_key, CommandLineOptions.NOTE_OPTION, note)
+
+    print(print_command(exec, acct_tag, vault_key)) # assertion here
+    print(print_command(exec, acct_tag, vault_key, CommandLineOptions.USERNAME_OPTION)) # assertion here
+    print(print_command(exec, acct_tag, vault_key, CommandLineOptions.PASSWORD_OPTION)) # assertion here
+    print(print_command(exec, acct_tag, vault_key, CommandLineOptions.NOTE_OPTION)) # assertion here
+
+    clean_dir()
 
 def print_command(exec, account_name, vault_key, option=None):
     if option is None:
@@ -166,9 +191,34 @@ def print_command(exec, account_name, vault_key, option=None):
             option])
     return exec_cmd(cmd)
 
+def get_clipboard_data():
+    p = subprocess.Popen(['xclip','-selection', 'clipboard', '-o'], stdout=subprocess.PIPE)
+    retcode = p.wait()
+    data = p.stdout.read()
+    return data
+
 def test_clip():
     # tests clip commands
-    print("Hello world!")
+    clean_dir()
+
+    exec = './pml'
+
+    acct_tag = 'acct123'
+    vault_key = 'key123'
+    username = 'username123'
+    password = 'password123'
+
+    add_command(exec, acct_tag, vault_key, username, password, None)
+
+    # TODO: Fix clip_command (hangs indefinitely)
+    clip_command(exec, acct_tag, vault_key, CommandLineOptions.USERNAME_OPTION)
+    print(get_clipboard_data()) # assertion here
+
+    # TODO: Fix clip_command (hangs indefinitely)
+    clip_command(exec, acct_tag, vault_key, CommandLineOptions.PASSWORD_OPTION)
+    print(get_clipboard_data()) # assertion here
+
+    clean_dir()
 
 def clip_command(exec, account_name, vault_key, option):
     return exec_cmd(construct_cmd([
@@ -185,25 +235,33 @@ def test_update():
 
     exec = './pml'
 
-    add_command(exec, 'acct1', 'key1', 'un1-1', 'pw1-1', None)
-    update_command(exec, 'acct1', 'key1', CommandLineOptions.NOTE_OPTION, 'note1')
+    vault_name, vault_key = 'vault1', 'key1'
 
-    print(print_command(exec, 'acct1', 'key1', CommandLineOptions.USERNAME_OPTION)) # assertion here
-    print(print_command(exec, 'acct1', 'key1', CommandLineOptions.PASSWORD_OPTION)) # assertion here
-    print(print_command(exec, 'acct1', 'key1', CommandLineOptions.NOTE_OPTION)) # assertion here
+    acct1_tag, acct1_un, acct1_pw, acct1_note = 'acct1-1', 'un1-1', 'pw1-1', 'note1'
+    acct1_un_new, acct1_pw_new, acct1_note_new = 'un-new', 'pw-new', 'note-new'
+    acct2_tag, acct2_un, acct2_pw = 'acct1-2', 'un1-2', 'pw1-2'
 
-    update_command(exec, 'acct1', 'key1', CommandLineOptions.USERNAME_OPTION, 'un-new')
-    update_command(exec, 'acct1', 'key1', CommandLineOptions.PASSWORD_OPTION, 'pw-new')
-    update_command(exec, 'acct1', 'key1', CommandLineOptions.NOTE_OPTION, 'note-new')
+    add_command(exec, acct1_tag, vault_key, acct1_un, acct1_pw, None)
+    update_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION, acct1_note)
 
-    print(print_command(exec, 'acct1', 'key1', CommandLineOptions.USERNAME_OPTION)) # assertion here
-    print(print_command(exec, 'acct1', 'key1', CommandLineOptions.PASSWORD_OPTION)) # assertion here
-    print(print_command(exec, 'acct1', 'key1', CommandLineOptions.NOTE_OPTION)) # assertion here
+    print(print_command(exec, acct1_tag, vault_key, CommandLineOptions.USERNAME_OPTION)) # assertion here
+    print(print_command(exec, acct1_tag, vault_key, CommandLineOptions.PASSWORD_OPTION)) # assertion here
+    print(print_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION)) # assertion here
 
-    add_command(exec, 'acct2', 'key1', 'un2-1', 'pw2-1', None)
-    print(list_command(exec, 'key1')) # assertion here
-    update_command(exec, 'acct1', 'key1', CommandLineOptions.DELETE_OPTION)
-    print(list_command(exec, 'key1')) # assertion here
+    update_command(exec, acct1_tag, vault_key, CommandLineOptions.USERNAME_OPTION, acct1_un_new)
+    update_command(exec, acct1_tag, vault_key, CommandLineOptions.PASSWORD_OPTION, acct1_pw_new)
+    update_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION, acct1_note_new)
+
+    print(print_command(exec, acct1_tag, vault_key, CommandLineOptions.USERNAME_OPTION)) # assertion here
+    print(print_command(exec, acct1_tag, vault_key, CommandLineOptions.PASSWORD_OPTION)) # assertion here
+    print(print_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION)) # assertion here
+
+    add_command(exec, acct2_tag, vault_key, acct2_un, acct2_pw, None)
+    print(list_command(exec, vault_key)) # assertion here
+    update_command(exec, acct1_tag, vault_key, CommandLineOptions.DELETE_OPTION)
+    print(list_command(exec, vault_key)) # assertion here
+
+    clean_dir()
 
 def update_command(exec, account_name, vault_key, option, arg=None):
     if arg is None:
@@ -227,7 +285,29 @@ def update_command(exec, account_name, vault_key, option, arg=None):
 
 def test_add():
     # tests add commands
-    print("Hello world!")
+    clean_dir()
+
+    exec = './pml'
+
+    vault_name, vault_key = 'vault1', 'key1'
+
+    acct1_tag, acct1_un, acct1_pw, acct1_note = 'acct1-1', 'un1-1', 'pw1-1', 'note1'
+    acct2_tag, acct2_un, acct2_pw = 'acct1-2', 'un1-2', 'pw1-2'
+
+    add_command(exec, acct1_tag, vault_key, acct1_un, acct1_pw, None)
+    update_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION, acct1_note)
+
+    print(print_command(exec, acct1_tag, vault_key, CommandLineOptions.USERNAME_OPTION)) # assertion here
+    print(print_command(exec, acct1_tag, vault_key, CommandLineOptions.PASSWORD_OPTION)) # assertion here
+    print(print_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION)) # assertion here
+
+    add_command(exec, acct2_tag, vault_key, acct2_un, acct2_pw, None)
+    print(list_command(exec, vault_key)) # assertion here
+
+    print(print_command(exec, acct2_tag, vault_key, CommandLineOptions.USERNAME_OPTION)) # assertion here
+    print(print_command(exec, acct2_tag, vault_key, CommandLineOptions.PASSWORD_OPTION)) # assertion here
+
+    clean_dir()
 
 def add_command(exec, account_name, vault_key, un=None, pw=None, file_path=None):
     if file_path is not None:
@@ -260,6 +340,8 @@ def add_command(exec, account_name, vault_key, un=None, pw=None, file_path=None)
     return exec_cmd(cmd)
 
 if __name__ == "__main__":
-    #test_vault()
-    #test_print()
+    test_vault()
+    test_print()
     test_update()
+    test_add()
+    #test_clip()
