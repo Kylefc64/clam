@@ -11,24 +11,24 @@
 
 class Vault {
 public:
-	Vault(const std::string &vaultName, const std::string &vaultKey, bool create=false);
-	~Vault();
-	void printTags(std::ostream &outputStream) const;
-	void printInfo(std::ostream &outputStream) const;
-	Account& getAccount(const std::string &tag);
-	void addAccount(Account account);
-	void removeAccount(const std::string& tag);
-	bool exists(const std::string &tag);
-	void writeVault() const;
-	void updateKey(const std::string &newKey);
-	std::string getVaultName() const;
-	std::string getVaultKey() const;
+    Vault(const std::string &vaultName, const std::string &vaultKey, bool create=false);
+    ~Vault();
+    void printTags(std::ostream &outputStream) const;
+    void printInfo(std::ostream &outputStream) const;
+    Account& getAccount(const std::string &tag);
+    void addAccount(Account account);
+    void removeAccount(const std::string& tag);
+    bool exists(const std::string &tag);
+    void writeVault() const;
+    void updateKey(const std::string &newKey);
+    std::string getVaultName() const;
+    std::string getVaultKey() const;
 private:
-	std::string vaultName;
-	std::string vaultKey;
+    std::string vaultName;
+    std::string vaultKey;
 
-	// Do not store Accounts as a map for security reasons...
-	std::vector<Account> accounts; // decrypted accounts
+    // Do not store Accounts as a map for security reasons...
+    std::vector<Account> accounts; // decrypted accounts
 
 };
 
