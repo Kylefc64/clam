@@ -3,7 +3,7 @@ A light, terminal-based application for securely managing all of your account pa
 
 # Usage Options
 
-1. Vault options
+1. Vault options: pml --vault (add --name <vault-name> --key <vault-key> | update --key <vault-key> --knew <new-key> | switch --name <vault-name> --key <vault-key> | delete --name <vault-name> --key <vault-key> | list [--key <key> [--info]])
 * pml -v add -n \<new vault's name\> -k \<new vault's key\>
     * Creates a new vault with the given key
 * pml -v update -k \<vault's old key\> -knew \<vault's new key\>
@@ -19,7 +19,7 @@ A light, terminal-based application for securely managing all of your account pa
 * pml -v list -k \<vault key\> -i
     * Lists the account information for all accounts in the active vault in a human-readable format
 
-2. Print options
+2. Print options: pml --print <account-name> --key <key> [--username <username> | --password <password> | --note <note>]
 * pml -p \<acct name\> -k \<vault key\>
     * prints (nicely formatted) all details of the given account in the active vault
 * pml -p \<acct name\> -k \<vault key\> -un
@@ -29,13 +29,13 @@ A light, terminal-based application for securely managing all of your account pa
 * pml -p \<acct name\> -k \<vault key\> -note
     * prints only the notes of the given account in the active vault
 
-3. Clip options
+3. Clip options: pml --clip <account-name> --key <vault-key> --username | --password
 * pml -c \<acct name\> -k \<vault key\> -un
     * clips only the username of the given account in the active vault
 * pml -c \<acct name\> -k \<vault key\> -pw
     * clips only the password of the given account in the active vault
 
-4. Update options
+4. Update options: pml --update <account-name> --key <key> (--username <username> | --password <password> | --note <note> | --file <file-path> | --delete)
 * pml -u \<acct name\> -k \<vault key\> -un \<new username\>
     * Updates the given account of the active vault's username to the given username
 * pml -u \<acct name\> -k \<vault key\> -pw \<new password\>
@@ -51,7 +51,7 @@ A light, terminal-based application for securely managing all of your account pa
 * pml -u \<acct name\> -k \<vault key\> -d
     * deletes the record for the given account in the active vault
 
-5. Add options
+5. Add options : pml --add <account-name> --key <vault-key> [--file <file-path> | --username <username> --password <password>]
 * pml -a \<acct name\> -k \<vault key\> -f \<file path\>
     * Add a new account which's details are parsed from the specified file (same format as above) to the active vault
 * pml -a \<acct name\> -k \<vault key\>

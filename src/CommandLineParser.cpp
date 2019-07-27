@@ -27,6 +27,7 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 		{"delete",    no_argument, 0, CommandLineOptions::DELETE_OPTION},
 		{"add",    required_argument, 0, CommandLineOptions::ADD_OPTION},
 		{"info",    no_argument, 0, CommandLineOptions::INFO_OPTION},
+		{"help",    no_argument, 0, CommandLineOptions::HELP_OPTION},
 		{0, 0, 0, 0}
 	};
 
@@ -37,7 +38,7 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 		/* getopt_long stores the option index here. */
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "v:k:n:c:p:u:f:a:di",
+		c = getopt_long(argc, argv, "v:k:n:c:p:u:f:a:dih",
 		               long_options, &option_index);
 
 		/* Detect the end of the options. */
@@ -133,6 +134,10 @@ CommandLineParser::CommandLineParser(int argc, char **argv) {
 
 		case CommandLineOptions::INFO_OPTION:
 			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::INFO_OPTION, ""));
+			break;
+
+		case CommandLineOptions::HELP_OPTION:
+			optMap.insert(std::pair<CommandLineOptions, std::string>(CommandLineOptions::HELP_OPTION, ""));
 			break;
 
 		case '?':

@@ -19,6 +19,7 @@ enum CommandLineOptions {
 	DELETE_OPTION = 'd', // -d or --delete
 	ADD_OPTION = 'a', // -a or --add
 	INFO_OPTION = 'i', // -i or --info
+	HELP_OPTION = 'h',
 };
 
 class CommandLineParser {
