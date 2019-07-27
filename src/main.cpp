@@ -22,7 +22,7 @@ void initialize(std::vector<VaultInfo> &vaultMetaData);
 void readVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
 void writeVaultMetaData(std::vector<VaultInfo> &vaultMetaData);
 std::string getVaultKey(const CommandLineParser& commandOpts);
-std::string getAccountName(const CommandLineParser& commandOpts);
+std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt);
 bool validateKey(std::string key, const unsigned char *salt, const unsigned char *hash);
 void addVault(std::vector<VaultInfo> &vaultMetaData, const std::string &vaultName, const std::string &vaultKey);
 
@@ -166,7 +166,8 @@ std::string getVaultKey(const CommandLineParser& commandOpts) {
 
 /**
 	Attempts to retrieve the name parameter from the command options and
-	reports a generic error if the option does not exist.
+	reports a generic error if the option does not exist, or if the account name
+	does not exist in the active vault..
 */
 std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt) {
 	std::string name = commandOpts.getOpt(nameOpt);
@@ -475,6 +476,11 @@ void processAccountPrintCommand(const CommandLineParser& commandOpts, Vault &act
 	Utils::debugPrint(std::cout, "Entered processAccountPrintCommand\n");
 
 	std::string accountName = getAccountName(commandOpts, CommandLineOptions::PRINT_OPTION);
+	if(!activeVault.exists(accountName)) {
+		std::cout << "Error: The specified account does not exist. You may create an account using the -a option." << std::endl;
+		return;
+	}
+
 	if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
 		std::cout << activeVault.getAccount(accountName).getUsername() << std::endl;
 	} else if (commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
@@ -496,6 +502,10 @@ void processAccountClipCommand(const CommandLineParser& commandOpts, Vault &acti
 	Utils::debugPrint(std::cout, "Entered processAccountClipCommand\n");
 
 	std::string accountName = getAccountName(commandOpts, CommandLineOptions::CLIP_OPTION);
+	if(!activeVault.exists(accountName)) {
+		std::cout << "Error: The specified account does not exist. You may create an account using the -a option." << std::endl;
+		return;
+	}
 
 	// TODO: How to get xclip to not add a newline to end of copied string??
 	if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
@@ -521,8 +531,7 @@ void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &ac
 	Utils::debugPrint(std::cout, "Entered processAccountUpdateCommand\n");
 
 	std::string accountName = getAccountName(commandOpts, CommandLineOptions::UPDATE_OPTION);
-
-	if (!activeVault.exists(accountName)) {
+	if(!activeVault.exists(accountName)) {
 		std::cout << "Error: The specified account does not exist. You may create an account using the -a option." << std::endl;
 		return;
 	}
@@ -548,8 +557,7 @@ void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &ac
 		Account account(accountName, filePath);
 		activeVault.addAccount(account);
 	} else if (commandOpts.containsOpt(CommandLineOptions::DELETE_OPTION)) {
-		// TODO: implement account deletion
-		std::cout << "deleting account" << std::endl;
+		activeVault.removeAccount(accountName);
 	} else {
 		std::cout << "Error: Invalid account update option. Valid options are -un, -pw, -note, and -f." << std::endl;
 		return;

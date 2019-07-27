@@ -4,6 +4,7 @@
 #include <fstream>
 #include <random>
 #include <cstring>
+#include <algorithm>
 
 /**
 	Encrypts and loads into memory the vault located at vaults/vaultName if create is false.
@@ -121,6 +122,14 @@ void Vault::addAccount(Account account) {
 }
 
 /**
+	Removes the account with the given tag from the vault, if it exists.
+*/
+void Vault::removeAccount(const std::string& tag) {
+	std::remove_if(accounts.begin(), accounts.end(),
+				   [tag](Account a) { return a.getTag() == tag; });
+}
+
+/**
 	Returns true if an Account with the given tag exists and false otherwise.
 */
 bool Vault::exists(const std::string &tag) {
@@ -146,7 +155,9 @@ void Vault::writeVault() const {
 	std::vector<uint8_t> serializedAccount;
 	for (int i = 0; i < accounts.size(); ++i) {
 		serializedAccount = accounts[i].serialize();
-		serializedAccountList.insert(serializedAccountList.end(), serializedAccount.data(), serializedAccount.data() + serializedAccount.size());
+		serializedAccountList.insert(serializedAccountList.end(),
+									 serializedAccount.data(),
+									 serializedAccount.data() + serializedAccount.size());
 	}
 
 	size_t plaintextSize = serializedAccountList.size();

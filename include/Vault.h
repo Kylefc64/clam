@@ -17,6 +17,7 @@ public:
 	void printInfo(std::ostream &outputStream) const;
 	Account& getAccount(const std::string &tag);
 	void addAccount(Account account);
+	void removeAccount(const std::string& tag);
 	bool exists(const std::string &tag);
 	void writeVault() const;
 	void updateKey(const std::string &newKey);
