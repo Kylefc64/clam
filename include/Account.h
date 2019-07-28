@@ -7,9 +7,9 @@
 class Account {
 public:
     Account(const std::string &tag);
-    Account(const std::string &tag, const std::string &filePath);
     Account(const std::string &tag, const std::string &un, const std::string &pw);
     Account(unsigned char **serializedAccount);
+    bool loadFromFile(const std::string &filePath);
     std::string getTag() const;
     std::string getUsername() const;
     std::string getPassword() const;

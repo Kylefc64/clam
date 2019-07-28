@@ -2,6 +2,7 @@
 #include "Utils.h"
 
 #include <cstring>
+#include <fstream>
 
 /**
     Creates a new Account with the given tag with empty details.
@@ -12,15 +13,7 @@ Account::Account(const std::string &tag)
 }
 
 /**
-    Reads a new account with the given tag from the given unencrypted file.
-*/
-Account::Account(const std::string &tag, const std::string &filePath)
-: tag(tag) {
-    // TODO: Read and parse Account username, password, and note from the given file
-}
-
-/**
-    Creates a new Account with the given tag with the given username and password.
+    Creates a new Account with the given tag, username, and password.
 */
 Account::Account(const std::string &tag, const std::string &un, const std::string &pw)
 : tag(tag), username(un), password(pw), note("") {
@@ -64,6 +57,41 @@ Account::Account(unsigned char **serializedAccount) {
         note += (*serializedAccount)[i];
     }
     *serializedAccount += size; // advance past note
+}
+
+/**
+    Reads a new account with the given tag from the given unencrypted file.
+    Returns true if an account was successfully parsed from the specified
+    file and false otherwise.
+*/
+bool Account::loadFromFile(const std::string &filePath) {
+    std::ifstream fileStream(filePath);
+
+    if (!fileStream) {
+        std::cout << "Error: Failed to load account from file." << std::endl;
+        return false;
+    }
+
+    if (!getline(fileStream, username)) {
+        std::cout << "Error: Failed to load account from file." << std::endl;
+        return false;
+    }
+
+    if (!getline(fileStream, password)) {
+        std::cout << "Error: Failed to load account from file." << std::endl;
+        return false;
+    }
+
+    std::string nextLine;
+    while (getline(fileStream, nextLine)) {
+        note += nextLine + '\n';
+    }
+
+    note.erase(note.size() - 1); // remove the trailing newline character
+
+    fileStream.close();
+
+    return true;
 }
 
 std::string Account::getTag() const {

@@ -7,61 +7,53 @@
 #include <algorithm>
 
 /**
-    Encrypts and loads into memory the vault located at vaults/vaultName if create is false.
-    Creates and writes to disk a new Vault at vaults/vaultName if create is true.
-    Assumes that the Vault key is correct, that if create is false a Vault with the given
-    name exists, and that if create is true a Vault with the given name does not exist.
+    Decrypts and loads into memory the vault located at vaultDir/vaultName, if such a vault exists.
 */
-Vault::Vault(const std::string &vaultDir, const std::string &vaultName, const std::string &vaultKey, bool create)
-: vaultDir(vaultDir), vaultName(vaultName), vaultKey(vaultKey) {
-    std::string filePath = vaultDir + vaultName;
-    std::ifstream fileStream(filePath);
+Vault::Vault(const std::string &vaultDir, const std::string &vaultName, const std::string &vaultKey)
+: vaultFilePath(vaultDir + vaultName), vaultName(vaultName), vaultKey(vaultKey) {
+    std::ifstream fileStream(vaultFilePath);
     
-    if (create) {
-        // Create a new empty vault with the given name (assume a vault with the given name does not exist):
-        // New vaults will be empty
-    } else {
-        // Load the vault with the given name (assume it exists):
-        fileStream.seekg(0, fileStream.end);
-        int fileSize = fileStream.tellg();
-        fileStream.seekg(0, fileStream.beg);
-        if (fileSize <= 0) {
-            // Do not try to decrypt and load accounts from an empty vault:
-            return;
-        }
-
-        // Compute sha512(vaultKey) (skey):
-        unsigned char skey[SKEY_LENGTH];
-        Utils::sha256(skey, (unsigned char *)vaultKey.c_str(), vaultKey.size());
-
-        // Load 32-byte iv
-        unsigned char iv[SKEY_LENGTH];
-        fileStream.read((char *)iv, SKEY_LENGTH);
-
-        // Load remaining bytes (until EOF) into a byte array
-        int ciphertextSize = fileSize - SKEY_LENGTH;
-        unsigned char *ciphertext = new unsigned char[ciphertextSize];
-        fileStream.read((char *)ciphertext, ciphertextSize);
-
-        // Allocate a plaintext buffer in which to store the decrypted plaintext:
-        unsigned char *plaintext = new unsigned char[ciphertextSize];
-
-        // Use sha(vaultKey) and iv to decrypt account list byte array
-        Utils::ctrDecrypt(ciphertext, plaintext, ciphertextSize, iv, skey, SKEY_LENGTH);
-        
-        // Load one account at a time from the decrypted byte array:
-        unsigned char *plaintextIter = plaintext;
-        unsigned char *plaintextEnd = plaintext + ciphertextSize;
-        while (plaintextIter != plaintextEnd) {
-            accounts.push_back(Account(&plaintextIter));
-        }
-
-        // Clean up memory:
-        std::memset(skey, 0, SKEY_LENGTH);
-        std::memset(plaintext, 0, ciphertextSize);
-        delete[] plaintext;
-        delete[] ciphertext;
+    // Attempt to load the vault with the given name:
+    fileStream.seekg(0, fileStream.end);
+    int fileSize = fileStream.tellg();
+    fileStream.seekg(0, fileStream.beg);
+    if (fileSize <= 0) {
+        // Do not try to decrypt and load accounts from an empty vault:
+        return;
     }
+
+    // Compute sha512(vaultKey) (skey):
+    unsigned char skey[SKEY_LENGTH];
+    Utils::sha256(skey, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+
+    // Load 32-byte iv
+    unsigned char iv[SKEY_LENGTH];
+    fileStream.read((char *)iv, SKEY_LENGTH);
+
+    // Load remaining bytes (until EOF) into a byte array
+    int ciphertextSize = fileSize - SKEY_LENGTH;
+    unsigned char *ciphertext = new unsigned char[ciphertextSize];
+    fileStream.read((char *)ciphertext, ciphertextSize);
+
+    // Allocate a plaintext buffer in which to store the decrypted plaintext:
+    unsigned char *plaintext = new unsigned char[ciphertextSize];
+
+    // Use sha(vaultKey) and iv to decrypt account list byte array
+    Utils::ctrDecrypt(ciphertext, plaintext, ciphertextSize, iv, skey, SKEY_LENGTH);
+    
+    // Load one account at a time from the decrypted byte array:
+    unsigned char *plaintextIter = plaintext;
+    unsigned char *plaintextEnd = plaintext + ciphertextSize;
+    while (plaintextIter != plaintextEnd) {
+        accounts.push_back(Account(&plaintextIter));
+    }
+
+    // Clean up memory:
+    std::memset(skey, 0, SKEY_LENGTH);
+    std::memset(plaintext, 0, ciphertextSize);
+    delete[] plaintext;
+    delete[] ciphertext;
+
     fileStream.close();
 }
 
@@ -146,7 +138,7 @@ void Vault::removeAccount(const std::string& tag) {
 }
 
 /**
-    Encrypts and writes all Accounts in this Vault to disk at vaults/vaultName.
+    Encrypts and writes all Accounts in this Vault to disk at vaultFilePath.
 */
 void Vault::writeVault() const {
     if (accounts.empty()) {
@@ -180,8 +172,7 @@ void Vault::writeVault() const {
     Utils::ctrEncrypt(plaintext, ciphertext, plaintextSize, iv, skey, SKEY_LENGTH);
 
     // write sha(sha(vaultKey)), iv, and encrypted byte array to disk under vaults/vaultName
-    std::string filePath = vaultDir + vaultName;
-    std::ofstream fileStream(filePath);
+    std::ofstream fileStream(vaultFilePath);
     fileStream.write((char *)iv, SKEY_LENGTH);
     fileStream.write((char *)ciphertext, plaintextSize);
     fileStream.close();

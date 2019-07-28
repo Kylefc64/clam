@@ -30,6 +30,7 @@ int main(int argc, char *argv[]) {
     Utils::debugDisable();
     Utils::debugPrint(std::cout, "Entered main\n");
 
+    // Get user's home directory (https://stackoverflow.com/questions/2910377/get-home-directory-in-linux):
     const char *userHomeDir;
     if (NULL == (userHomeDir = getenv("HOME"))) {
         userHomeDir = getpwuid(getuid())->pw_dir;
@@ -201,7 +202,7 @@ void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vau
         -p, --print                     Print some account information to the console.
         -u, --update                    Update some information for some account in the active vault.
         --knew, --newkey=new-key        new vault key input                 
-        -f, --file
+        -f, --file=acct-filepath        Path to the file containing unencrypted account data to load.
         -f, --delete                    Delete an account from the active vault.
         -a, --add                       Add a new account to the active vault.
         -i, --info                      List info for all accounts in the active vault.
@@ -242,7 +243,7 @@ void processHelpCommand() {
     << "-p, --print                     Print some account information to the console.\n"
     << "-u, --update                    Update some information for some account in the active vault.\n"
     << "--knew, --newkey=new-key        new vault key input\n"
-    << "-f, --file                      TBD\n"
+    << "-f, --file=acct-filepath        Path to the file containing unencrypted account data to load.\n"
     << "-f, --delete                    Delete an account from the active vault.\n"
     << "-a, --add                       Add a new account to the active vault.\n"
     << "-i, --info                      List info for all accounts in the active vault.\n"
@@ -380,11 +381,12 @@ void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &ac
         // Update the note of the given account
         account->setNote(note);
     } else if (commandOpts.containsOpt(CommandLineOptions::FILE_OPTION)) {
-        // TODO: Implement this
         std::string filePath = commandOpts.getOpt(CommandLineOptions::FILE_OPTION);
         // Update all details of the given account
-        Account newAccount(accountName, filePath);
-        //*account = newAccount;
+        Account newAccount(accountName);
+        if (newAccount.loadFromFile(filePath)) {
+            *account = newAccount;
+        }
     } else if (commandOpts.containsOpt(CommandLineOptions::DELETE_OPTION)) {
         activeVault.removeAccount(accountName);
     } else {
@@ -405,8 +407,10 @@ void processAccountAddCommand(const CommandLineParser& commandOpts, Vault &activ
     if (commandOpts.containsOpt(CommandLineOptions::FILE_OPTION)) {
         std::string filePath = commandOpts.getOpt(CommandLineOptions::FILE_OPTION);
         // Read the new account from the specified file
-        Account account(accountName, filePath);
-        activeVault.addAccount(account);
+        Account account(accountName);
+        if (account.loadFromFile(filePath)) {
+            activeVault.addAccount(account);
+        }
     } else if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION) && commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
         std::string username = commandOpts.getOpt(CommandLineOptions::USERNAME_OPTION);
         std::string password = commandOpts.getOpt(CommandLineOptions::PASSWORD_OPTION);

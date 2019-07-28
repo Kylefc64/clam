@@ -38,9 +38,6 @@ void VaultManager::addVault(const std::string &vaultName, const std::string &vau
         }
     }
     
-    Vault newVault(vaultDir, newVaultInfo.vaultName, vaultKey, true);
-    newVault.writeVault();
-
     // Generate pw hash and salt for the new vault
 
     // Compute random salt:

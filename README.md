@@ -45,8 +45,8 @@ A light, terminal-based application for securely managing all of your account pa
 * pml -u \<acct name\> -k \<vault key\> -f \<file path\>
     * Updates all of the given account of the active vault's details to the contents of the specified file,
       which must be formatted as follows:
-      un=\<username\>\<newline\>
-      ps=\<password\>\<newline\>
+      \<username\>\<newline\>
+      \<password\>\<newline\>
       \<note\>
 * pml -u \<acct name\> -k \<vault key\> -d
     * deletes the record for the given account in the active vault

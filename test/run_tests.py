@@ -1,4 +1,5 @@
 import subprocess
+from pathlib import Path
 
 class CommandLineOptions():
     VAULT_OPTION = '-v'
@@ -42,6 +43,12 @@ class Account:
         self.note = note
 
 """
+    Returns the location where program data is stored.
+"""
+def program_data_dir():
+    return str(Path.home()) + "/.pml/"
+
+"""
     Given the expected lines, builds a string containing all of those lines separated by newlines.
 """
 def build_console_output(*lines):
@@ -55,7 +62,7 @@ def construct_cmd(*args):
     return ''.join([arg + ' ' for arg in args]).rstrip(' ')
 
 def clean_dir():
-    exec_cmd(construct_cmd('rm', '-rf', '~/.pml'))
+    exec_cmd(construct_cmd('rm', '-rf', program_data_dir()))
 
 def test_vault():
     # tests vault commands
@@ -283,8 +290,9 @@ def test_update():
     vault_name, vault_key = 'vault1', 'key1'
 
     acct1_tag, acct1_un, acct1_pw, acct1_note = 'acct1-1', 'un1-1', 'pw1-1', 'note1'
-    acct1_un_new, acct1_pw_new, acct1_note_new = 'un-new', 'pw-new', 'note-new'
-    acct2_tag, acct2_un, acct2_pw = 'acct1-2', 'un1-2', 'pw1-2'
+    acct1_un_new, acct1_pw_new, acct1_note_new = 'un-new1', 'pw-new1', 'note-new1'
+    acct2_tag, acct2_un, acct2_pw, acct2_note = 'acct1-2', 'un1-2', 'pw1-2', 'note2'
+    acct2_un_new, acct2_pw_new, acct2_note_new = 'un-new2', 'pw-new2', 'line1\nline2\nline3\nline4'
 
     test_suite = TestSuite('test_update')
 
@@ -304,9 +312,29 @@ def test_update():
     test_suite.assert_equals(build_console_output(acct1_note_new), print_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION))
 
     add_command(exec, acct2_tag, vault_key, acct2_un, acct2_pw, None)
+    update_command(exec, acct2_tag, vault_key, CommandLineOptions.NOTE_OPTION, acct2_note)
     test_suite.assert_equals(build_console_output(acct1_tag, acct2_tag), list_command(exec, vault_key))
     update_command(exec, acct1_tag, vault_key, CommandLineOptions.DELETE_OPTION)
     test_suite.assert_equals(build_console_output(acct2_tag), list_command(exec, vault_key))
+
+    # Write account 2 data to file:
+    acct2_input_file_text = acct2_un_new + '\n' + acct2_pw_new + '\n' + acct2_note_new
+    acct2_file_path = program_data_dir() + 'acct2'
+    acct2_file = open(acct2_file_path, "w")
+    acct2_file.write(acct2_input_file_text)
+    acct2_file.close()
+
+    # File update command that should fail, and therefore not modify acct2 data:
+    update_command(exec, acct2_tag, vault_key, CommandLineOptions.FILE_OPTION, program_data_dir() + 'acct212123')
+    test_suite.assert_equals(build_console_output(acct2_un), print_command(exec, acct2_tag, vault_key, CommandLineOptions.USERNAME_OPTION))
+    test_suite.assert_equals(build_console_output(acct2_pw), print_command(exec, acct2_tag, vault_key, CommandLineOptions.PASSWORD_OPTION))
+    test_suite.assert_equals(build_console_output(acct2_note), print_command(exec, acct2_tag, vault_key, CommandLineOptions.NOTE_OPTION))
+
+    # File update command that should pass:
+    update_command(exec, acct2_tag, vault_key, CommandLineOptions.FILE_OPTION, acct2_file_path)
+    test_suite.assert_equals(build_console_output(acct2_un_new), print_command(exec, acct2_tag, vault_key, CommandLineOptions.USERNAME_OPTION))
+    test_suite.assert_equals(build_console_output(acct2_pw_new), print_command(exec, acct2_tag, vault_key, CommandLineOptions.PASSWORD_OPTION))
+    test_suite.assert_equals(build_console_output(acct2_note_new), print_command(exec, acct2_tag, vault_key, CommandLineOptions.NOTE_OPTION))
 
     test_suite.finish()
 
@@ -342,6 +370,7 @@ def test_add():
 
     acct1_tag, acct1_un, acct1_pw, acct1_note = 'acct1-1', 'un1-1', 'pw1-1', 'note1'
     acct2_tag, acct2_un, acct2_pw = 'acct1-2', 'un1-2', 'pw1-2'
+    acct3_tag, acct3_un, acct3_pw, acct3_note = 'acct1-3', 'un1-3', 'pw1-3', 'line1\nline2\nline3\nline4'
 
     test_suite = TestSuite('test_add')
 
@@ -360,6 +389,25 @@ def test_add():
 
     add_command(exec, acct1_tag, vault_key, acct1_un, acct1_pw, None) # account tag already exists error
     test_suite.assert_equals(build_console_output(acct1_note), print_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION)) # acct1 note should be non-empty
+
+    # Write account 3 data to file:
+    acct3_input_file_text = acct3_un + '\n' + acct3_pw + '\n' + acct3_note
+    acct3_file_path = program_data_dir() + 'acct3'
+    acct3_file = open(acct3_file_path, "w")
+    acct3_file.write(acct3_input_file_text)
+    acct3_file.close()
+
+    # File add command that should pass:
+    add_command(exec, acct3_tag, vault_key, None, None, acct3_file_path)
+    test_suite.assert_equals(build_console_output(acct3_un), print_command(exec, acct3_tag, vault_key, CommandLineOptions.USERNAME_OPTION))
+    test_suite.assert_equals(build_console_output(acct3_pw), print_command(exec, acct3_tag, vault_key, CommandLineOptions.PASSWORD_OPTION))
+    test_suite.assert_equals(build_console_output(acct3_note), print_command(exec, acct3_tag, vault_key, CommandLineOptions.NOTE_OPTION))
+
+    # File add command that should fail, and therefore not modify acct3 data:
+    add_command(exec, acct3_tag, vault_key, None, None, str(Path.home()) + 'acct312123')
+    test_suite.assert_equals(build_console_output(acct3_un), print_command(exec, acct3_tag, vault_key, CommandLineOptions.USERNAME_OPTION))
+    test_suite.assert_equals(build_console_output(acct3_pw), print_command(exec, acct3_tag, vault_key, CommandLineOptions.PASSWORD_OPTION))
+    test_suite.assert_equals(build_console_output(acct3_note), print_command(exec, acct3_tag, vault_key, CommandLineOptions.NOTE_OPTION))
 
     test_suite.finish()
 

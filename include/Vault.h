@@ -12,7 +12,7 @@
 
 class Vault {
 public:
-    Vault(const std::string &vaultDir, const std::string &vaultName, const std::string &vaultKey, bool create=false);
+    Vault(const std::string &vaultDir, const std::string &vaultName, const std::string &vaultKey);
     ~Vault();
     void printTags(std::ostream &outputStream) const;
     void printInfo(std::ostream &outputStream) const;
@@ -32,7 +32,7 @@ private:
 
     // Do not store Accounts as a map for security reasons...
     std::vector<Account> accounts; // decrypted accounts
-    const std::string vaultDir;
+    const std::string vaultFilePath;
 };
 
 #endif
