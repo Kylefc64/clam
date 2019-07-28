@@ -1,11 +1,12 @@
 SRC_DIR=src/
 INCLUDE_DIR=include/
 BUILD_DIR=build/
+BIN_DIR=bin/
 TEST_DIR=test/
 CXX=g++
 CXXFLAGS=-std=c++17 -g -I include
 LIBFLAGS=-ltomcrypt
-PROG=$(BUILD_DIR)pml
+PROG=$(BIN_DIR)pml
 OBJS=$(BUILD_DIR)main.o $(BUILD_DIR)CommandLineParser.o $(BUILD_DIR)Vault.o $(BUILD_DIR)Account.o $(BUILD_DIR)Utils.o $(BUILD_DIR)VaultManager.o
 
 $(PROG): $(OBJS)
@@ -35,7 +36,7 @@ clean:
 test: $(PROG)
 	cp $(PROG) $(TEST_DIR)
 
-run:
+run: $(PROG)
 	./$(PROG)
 
 .PHONY:

@@ -1,5 +1,2 @@
-*.o
-*/meta/*
-*/vaults/*
-build/pml
-test/pml
+meta
+vaults
