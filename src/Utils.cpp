@@ -165,9 +165,6 @@ void Utils::debugPrint(std::ostream &outputStream, const std::string& str) {
 }
 
 bool Utils::verifyKey(std::string vaultKey, const unsigned char *salt, const unsigned char *correctHash, int keySize) {
-    // Utils::debugPrint(std::cout, vaultKey + " providedkey \n");
-    // Utils::debugPrint(std::cout, std::to_string(keySize) + " providedkeysize \n");
-    // Utils::debugPrint(std::cout, std::to_string(32) + " correctkeysize \n");
     unsigned char providedKeyHash[keySize];
     unsigned char unsaltedKeyHash[keySize];
     unsigned char concatBuffer[keySize * 2];
@@ -175,12 +172,7 @@ bool Utils::verifyKey(std::string vaultKey, const unsigned char *salt, const uns
     Utils::sha256(unsaltedKeyHash, (unsigned char *)vaultKey.c_str(), vaultKey.size());
     Utils::concatArr(unsaltedKeyHash, salt, keySize, keySize, concatBuffer);
     Utils::sha256(providedKeyHash, concatBuffer, keySize * 2);
-    // Utils::debugPrint(std::cout, std::to_string(providedKeyHash[0]) + " providedKeyHash \n");
-    // Utils::debugPrint(std::cout, std::to_string(correctHash[0]) + " correctHash \n");
+
     bool success = Utils::contentsEqual(providedKeyHash, correctHash, keySize);
-    // delete[] providedKeyHash;
-    // delete[] unsaltedKeyHash;
-    // delete[] concatBuffer;
-    // https://stackoverflow.com/questions/32118545/munmap-chunk-invalid-pointer
     return success;
 }
