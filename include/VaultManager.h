@@ -14,7 +14,8 @@ struct VaultInfo {
 
 class VaultManager {
 public:
-    VaultManager();
+    VaultManager(const std::string &metadataFilePath, const std::string &vaultDir);
+    const std::string& getVaultDir() const;
     bool empty() const;
     unsigned int size() const;
     VaultInfo& activeVaultInfo();
@@ -30,7 +31,10 @@ private:
     void readVaultMetaData();
     void writeVaultMetaData();
     void updateVaultInfo(VaultInfo &updatedVaultInfo);
+
     std::vector<VaultInfo> vaultMetaData;
+    const std::string metadataFilePath;
+    const std::string vaultDir;
 };
 
 #endif

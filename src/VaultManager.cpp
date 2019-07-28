@@ -1,6 +1,3 @@
-#include <sys/stat.h>
-#include <sys/types.h>
-
 #include <algorithm>
 #include <fstream>
 #include <cstring>
@@ -8,8 +5,13 @@
 #include "VaultManager.h"
 #include "Utils.h"
 
-VaultManager::VaultManager() {
-    initialize();
+VaultManager::VaultManager(const std::string &metadataFilePath, const std::string &vaultDir)
+: metadataFilePath(metadataFilePath), vaultDir(vaultDir) {
+    readVaultMetaData();
+}
+
+const std::string& VaultManager::getVaultDir() const {
+    return vaultDir;
 }
 
 bool VaultManager::empty() const {
@@ -36,7 +38,7 @@ void VaultManager::addVault(const std::string &vaultName, const std::string &vau
         }
     }
     
-    Vault newVault(newVaultInfo.vaultName, vaultKey, true);
+    Vault newVault(vaultDir, newVaultInfo.vaultName, vaultKey, true);
     newVault.writeVault();
 
     // Generate pw hash and salt for the new vault
@@ -83,7 +85,7 @@ void VaultManager::updateActiveVaultKey(const std::string &oldVaultKey, const st
     std::memcpy(activeVaultSalt, newSalt, SKEY_LENGTH);
     
     // Re-encrypt active Vault with new key:
-    Vault activeVault(activeVaultName, oldVaultKey);
+    Vault activeVault(vaultDir, activeVaultName, oldVaultKey);
     activeVault.updateKey(newVaultKey);
     activeVault.writeVault();
 
@@ -141,7 +143,7 @@ void VaultManager::deleteVault(const std::string &vaultKey, const std::string &v
         return;
     }
 
-    std::string filePathToRemove = "vaults/" + vaultToDeleteName;
+    std::string filePathToRemove = vaultDir + vaultToDeleteName;
 
     // Search in vaultMetaData for VaultInfo to delete
     for (int i = 1; i < vaultMetaData.size(); i++) { 
@@ -199,32 +201,6 @@ bool VaultManager::checkIfEmpty() const {
 }
 
 /**
-    Reads all vault metadata from the meta/meta file and creates the meta and vaults
-    directories if they do not yet exist. Stores all vault metadata in the 'vaultMetaData'
-    vector.
-*/
-void VaultManager::initialize() {
-    Utils::debugPrint(std::cout, "Entered initialize\n");
-
-    struct stat info;
-    if (((stat("meta", &info) != 0)) ||
-        ((stat("vaults", &info) != 0))) {
-        // meta or vaults directories do not exist:
-        
-        // Create empty meta and vaults directories:
-        system("mkdir meta/");
-        system("mkdir vaults/");
-        //system("touch meta/meta");
-        //system("touch vaults/default");
-    } else if ((stat("meta/meta", &info) != 0)) {
-        // meta/meta file does not exist:
-    } else {
-        // Read meta/meta file:
-        readVaultMetaData();
-    }
-}
-
-/**
     Read all of the vault metadata into the in-memory vaultMetaData vector.
     The metadata in the meta file is of the following format:
 
@@ -244,7 +220,7 @@ void VaultManager::initialize() {
 void VaultManager::readVaultMetaData() {
     Utils::debugPrint(std::cout, "Entered readVaultMetaData\n");
 
-    std::ifstream fileStream("meta/meta");
+    std::ifstream fileStream(metadataFilePath);
 
     uint32_t numVaults;
     fileStream.read((char *)&numVaults, sizeof(numVaults));
@@ -282,7 +258,7 @@ void VaultManager::readVaultMetaData() {
 void VaultManager::writeVaultMetaData() {
     Utils::debugPrint(std::cout, "Entered writeVaultMetaData\n");
 
-    std::ofstream fileStream("meta/meta");
+    std::ofstream fileStream(metadataFilePath);
 
     uint32_t numVaults = vaultMetaData.size();
     fileStream.write((char *)&numVaults, sizeof(numVaults));

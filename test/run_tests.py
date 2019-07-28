@@ -55,7 +55,7 @@ def construct_cmd(*args):
     return ''.join([arg + ' ' for arg in args]).rstrip(' ')
 
 def clean_dir():
-    exec_cmd(construct_cmd('rm', '-rf', 'vaults', 'meta'))
+    exec_cmd(construct_cmd('rm', '-rf', '~/.pml'))
 
 def test_vault():
     # tests vault commands

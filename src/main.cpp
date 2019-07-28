@@ -1,3 +1,8 @@
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <unistd.h>
+
 #include <iostream>
 #include <string>
 #include <cstdio>
@@ -8,6 +13,7 @@
 #include "Utils.h"
 #include "VaultManager.h"
 
+void initDataDirs(const std::string &programDataDir, const std::string &vaultDir);
 const std::string getVaultKey(const CommandLineParser& commandOpts);
 const std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt);
 
@@ -24,7 +30,19 @@ int main(int argc, char *argv[]) {
     Utils::debugDisable();
     Utils::debugPrint(std::cout, "Entered main\n");
 
-    VaultManager vaultManager;
+    const char *userHomeDir;
+    if (NULL == (userHomeDir = getenv("HOME"))) {
+        userHomeDir = getpwuid(getuid())->pw_dir;
+    }
+
+    const std::string programName = "pml";
+    const std::string programDataDir = std::string(userHomeDir) + "/." + programName + "/";
+    const std::string metadataFilePath = programDataDir + "meta";
+    const std::string vaultDir = programDataDir + "vaults/";
+
+    initDataDirs(programDataDir, vaultDir);
+
+    VaultManager vaultManager(metadataFilePath, vaultDir);
 
     CommandLineParser commandOpts(argc, argv);
     if (commandOpts.containsOpt(CommandLineOptions::VAULT_OPTION)) {
@@ -35,6 +53,23 @@ int main(int argc, char *argv[]) {
     } else {
         // This is a command that pertains to some account (or accounts) in the currently active vault
         processAccountCommand(commandOpts, vaultManager);
+    }
+}
+
+/**
+    Creates the program data directory and vaults subdirectory if either one does not yet exist.
+*/
+void initDataDirs(const std::string &programDataDir, const std::string &vaultDir) {
+    Utils::debugPrint(std::cout, "Entered initialize\n");
+
+    struct stat info;
+    if (((stat(programDataDir.c_str(), &info) != 0)) ||
+        ((stat(vaultDir.c_str(), &info) != 0))) {
+        // program data or vaults directories do not exist:
+        
+        // Create empty program data and vaults directories:
+        system(("mkdir " + programDataDir).c_str());
+        system(("mkdir " + vaultDir).c_str());
     }
 }
 
@@ -123,7 +158,7 @@ void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vau
         if (!VaultManager::validateKey(vaultKey, vaultManager.activeVaultInfo().vaultSkeySalt, vaultManager.activeVaultInfo().vaultSkeyHash)) {
             return;
         }
-        Vault activeVault(vaultManager.activeVaultInfo().vaultName, vaultKey);
+        Vault activeVault(vaultManager.getVaultDir(), vaultManager.activeVaultInfo().vaultName, vaultKey);
 
         if (commandOpts.containsOpt(CommandLineOptions::INFO_OPTION)) {
             activeVault.printInfo(std::cout);
@@ -244,7 +279,7 @@ void processAccountCommand(const CommandLineParser& commandOpts, VaultManager &v
     }
 
     // Attempt to load and decrypt vault:
-    Vault activeVault(vaultManager.activeVaultInfo().vaultName, vaultKey);
+    Vault activeVault(vaultManager.getVaultDir(), vaultManager.activeVaultInfo().vaultName, vaultKey);
     if (commandOpts.containsOpt(CommandLineOptions::PRINT_OPTION)) {
         processAccountPrintCommand(commandOpts, activeVault);
     } else if (commandOpts.containsOpt(CommandLineOptions::CLIP_OPTION)) {

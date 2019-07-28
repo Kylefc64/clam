@@ -34,7 +34,7 @@ clean:
 	rm $(PROG) $(OBJS) $(TEST_DIR)pml
 
 test: $(PROG)
-	cp $(PROG) $(TEST_DIR)
+	cp $(PROG) $(TEST_DIR); cd $(TEST_DIR); python3 run_tests.py
 
 run: $(PROG)
 	./$(PROG)

@@ -12,9 +12,9 @@
     Assumes that the Vault key is correct, that if create is false a Vault with the given
     name exists, and that if create is true a Vault with the given name does not exist.
 */
-Vault::Vault(const std::string &vaultName, const std::string &vaultKey, bool create)
-: vaultName(vaultName), vaultKey(vaultKey) {
-    std::string filePath = "vaults/" + vaultName;
+Vault::Vault(const std::string &vaultDir, const std::string &vaultName, const std::string &vaultKey, bool create)
+: vaultDir(vaultDir), vaultName(vaultName), vaultKey(vaultKey) {
+    std::string filePath = vaultDir + vaultName;
     std::ifstream fileStream(filePath);
     
     if (create) {
@@ -180,7 +180,7 @@ void Vault::writeVault() const {
     Utils::ctrEncrypt(plaintext, ciphertext, plaintextSize, iv, skey, SKEY_LENGTH);
 
     // write sha(sha(vaultKey)), iv, and encrypted byte array to disk under vaults/vaultName
-    std::string filePath = "vaults/" + vaultName;
+    std::string filePath = vaultDir + vaultName;
     std::ofstream fileStream(filePath);
     fileStream.write((char *)iv, SKEY_LENGTH);
     fileStream.write((char *)ciphertext, plaintextSize);
