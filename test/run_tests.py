@@ -24,6 +24,8 @@ class TestSuite:
 
     def assert_equals(self, expected, actual):
         self.total += 1
+        #print("Expected: " + expected)
+        #print("Actual: " + actual)
         if expected == actual:
             self.passed += 1
         else:

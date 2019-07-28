@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <optional>
 
 #define SKEY_LENGTH 32 // symmetric key length in bytes (256 bits)
 
@@ -15,15 +16,17 @@ public:
     ~Vault();
     void printTags(std::ostream &outputStream) const;
     void printInfo(std::ostream &outputStream) const;
-    Account& getAccount(const std::string &tag);
+    std::optional<Account *> getAccount(const std::string &tag);
     void addAccount(Account account);
     void removeAccount(const std::string& tag);
-    bool exists(const std::string &tag);
     void writeVault() const;
     void updateKey(const std::string &newKey);
     std::string getVaultName() const;
     std::string getVaultKey() const;
 private:
+    bool exists(const std::string &tag) const;;
+    void notExistsError() const;
+    bool existsError() const;
     std::string vaultName;
     std::string vaultKey;
 

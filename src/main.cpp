@@ -8,9 +8,10 @@
 #include "Utils.h"
 #include "VaultManager.h"
 
-std::string getVaultKey(const CommandLineParser& commandOpts);
-std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt);
+const std::string getVaultKey(const CommandLineParser& commandOpts);
+const std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt);
 
+void handleInvalidCommand(const std::string &errorDetails);
 void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager);
 void processHelpCommand();
 void processAccountCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager);
@@ -41,84 +42,84 @@ int main(int argc, char *argv[]) {
     Attempts to retrieve the KEY_OPTION parameter from the command options and
     reports a generic error if the option does not exist.
 */
-std::string getVaultKey(const CommandLineParser& commandOpts) {
-    std::string vaultKey = commandOpts.getOpt(CommandLineOptions::KEY_OPTION);
+const std::string getVaultKey(const CommandLineParser& commandOpts) {
+    const std::string vaultKey = commandOpts.getOpt(CommandLineOptions::KEY_OPTION);
     if (vaultKey == "") {
-        std::cout << "Error: You must provide a vault key using the -k option." << std::endl;
+        handleInvalidCommand("No vault key provided.");
     }
     return vaultKey;
 }
 
 /**
     Attempts to retrieve the name parameter from the command options and
-    reports a generic error if the option does not exist, or if the account name
-    does not exist in the active vault..
+    reports a generic error if the option does not exist.
 */
-std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt) {
-    std::string name = commandOpts.getOpt(nameOpt);
+const std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt) {
+    const std::string name = commandOpts.getOpt(nameOpt);
     if (name == "") {
-        std::cout << "Error: You must provide an account name using the -n option." << std::endl;
+        handleInvalidCommand("No account name provided.");
     }
     return name;
 }
 
 /**
+    Called when a parse error is encountered. Calls the processHelpCommand
+    function to inform user of proper command syntax and exits the program.
+*/
+void handleInvalidCommand(const std::string &errorDetails) {
+    std::cout << "Error: " << errorDetails << std::endl;
+    processHelpCommand();
+    exit(EXIT_SUCCESS);
+}
+
+/**
     Process a command that pertains to an entire vault.
 */
-void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager) { 
+void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager) {
     Utils::debugPrint(std::cout, "Entered processVaultCommand\n");
 
-    std::string metaCommand = commandOpts.getOpt(CommandLineOptions::VAULT_OPTION);
-    if (metaCommand == "list" && !commandOpts.containsOpt(CommandLineOptions::KEY_OPTION)) {
+    const std::string addOption = "add";
+    const std::string updateOption = "update";
+    const std::string switchOption = "switch";
+    const std::string deleteOption = "delete";
+    const std::string listOption = "list";
+
+    const std::string metaCommand = commandOpts.getOpt(CommandLineOptions::VAULT_OPTION);
+    if (metaCommand == listOption && !commandOpts.containsOpt(CommandLineOptions::KEY_OPTION)) {
         vaultManager.listVaultNames();
         return;
     }
 
-    std::string vaultKey = getVaultKey(commandOpts);
+    const std::string vaultKey = getVaultKey(commandOpts);
 
-    if (metaCommand == "add") {
+    if (metaCommand == addOption) {
         // Create a new vault:
         const std::string newVaultName = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
         if (newVaultName == "") {
-            std::cout << "Error: You must provide a vault name using the -n option." << std::endl;
-            return;
+            handleInvalidCommand("Name of vault to add not provided.");
         }
-    
-        Utils::debugPrint(std::cout, newVaultName + " newVaultname \n");
         vaultManager.addVault(newVaultName, vaultKey);
-    } else if (metaCommand == "update") {
-        // Error if there is no active vault:
-        if (vaultManager.empty()) {
-            std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
-            return;
-        }
-
+    } else if (metaCommand == updateOption) {
         // Verify that vaultKey is correct and report error and exit if not
-        std::string newVaultKey = commandOpts.getOpt(CommandLineOptions::NEWKEY_OPTION);
+        const std::string newVaultKey = commandOpts.getOpt(CommandLineOptions::NEWKEY_OPTION);
         if (newVaultKey == "") {
-            std::cout << "Error: New vault key must be provided to update vault key" << std::endl;
-            return;
+            handleInvalidCommand("New vault key not provided.");
         }
-
         vaultManager.updateActiveVaultKey(vaultKey, newVaultKey);
-    } else if (metaCommand == "switch") {
-        std::string vaultToSwitchToName = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
+    } else if (metaCommand == switchOption) {
+        const std::string vaultToSwitchToName = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
         if (vaultToSwitchToName == "") {
-            std::cout << "Error: Must provide the name of the vault to which you wish to switch to." << std::endl;
+            handleInvalidCommand("Name of vault to switch to not provided.");
         }
-
         vaultManager.switchActiveVault(vaultKey, vaultToSwitchToName);     
-    } else if (metaCommand == "delete") {
-        // Error if there is no active vault:
-        if (vaultManager.empty()) {
-            std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
-            return;
+    } else if (metaCommand == deleteOption) {
+        const std::string vaultToDeleteName = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
+        if (vaultToDeleteName == "") {
+            handleInvalidCommand("Name of vault to delete not provided.");
         }
-
-        std::string vaultToDeleteName = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
         vaultManager.deleteVault(vaultKey, vaultToDeleteName);
 
-    } else if (metaCommand == "list") {
+    } else if (metaCommand == listOption) {
         if (!VaultManager::validateKey(vaultKey, vaultManager.activeVaultInfo().vaultSkeySalt, vaultManager.activeVaultInfo().vaultSkeyHash)) {
             return;
         }
@@ -130,9 +131,7 @@ void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vau
             activeVault.printTags(std::cout);
         }
     } else {
-        std::cout << "Error: Invalid vault command\n"
-            << "Valid commands are: add, update, switch, delete, list" << std::endl;
-        return;
+        handleInvalidCommand("Invalid vault command.");
     }
 }
 
@@ -146,7 +145,7 @@ void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vau
             | switch --name <vault-name> --key <vault-key>
             | delete --name <vault-name> --key <vault-key>
             | list [--key <vault-key> [--info]])
-        pml --print <account-name> --key <vault-key> [--username <username> | --password <password> | --note <note>]
+        pml --print <account-name> --key <vault-key> [--username | --password | --note]
         pml --clip <account-name> --key <vault-key> --username | --password
         pml --update <account-name> --key <vault-key> (--username <username> | --password <password> | --note <note> | --file <file-path> | --delete)
         pml --add <account-name> --key <vault-key> [--file <file-path> | --username <username> --password <password>]
@@ -182,17 +181,15 @@ void processHelpCommand() {
         << "        | switch --name <vault-name> --key <vault-key>\n"
         << "        | delete --name <vault-name> --key <vault-key>\n"
         << "        | list [--key <vault-key> [--info]])\n"
-        << "    pml --print <account-name> --key <vault-key> [--username <username>\n"
-        << "                                            | --password <password>\n"
-        << "                                            | --note <note>]\n"
+        << "    pml --print <account-name> --key <vault-key> [--username | --password | --note]\n"
         << "    pml --clip <account-name> --key <vault-key> --username | --password\n"
         << "    pml --update <account-name> --key <vault-key> (--username <username>\n"
-        << "                                            | --password <password>\n"
-        << "                                            | --note <note>\n"
-        << "                                            | --file <file-path>\n"
-        << "                                            | --delete)\n"
+        << "                                                  | --password <password>\n"
+        << "                                                  | --note <note>\n"
+        << "                                                  | --file <file-path>\n"
+        << "                                                  | --delete)\n"
         << "    pml --add <account-name> --key <vault-key> [--file <file-path>\n"
-        << "                                            | --username <username> --password <password>]\n\n"
+        << "                                               | --username <username> --password <password>]\n\n"
 
     << "Options:\n"
     << "-v, --vault=vault-opt           vault command (options are: add, update, switch, delete, or list)\n"
@@ -257,8 +254,7 @@ void processAccountCommand(const CommandLineParser& commandOpts, VaultManager &v
     } else if (commandOpts.containsOpt(CommandLineOptions::ADD_OPTION)) {
         processAccountAddCommand(commandOpts, activeVault);
     } else {
-        std::cout << "Error: Invalid account command. Valid command options are: -p, -c, -u, -a" << std::endl;
-        return;
+        handleInvalidCommand("Invalid account command.");
     }
 }
 
@@ -269,22 +265,24 @@ void processAccountPrintCommand(const CommandLineParser& commandOpts, Vault &act
     Utils::debugPrint(std::cout, "Entered processAccountPrintCommand\n");
 
     std::string accountName = getAccountName(commandOpts, CommandLineOptions::PRINT_OPTION);
-    if(!activeVault.exists(accountName)) {
-        std::cout << "Error: The specified account does not exist. You may create an account using the -a option." << std::endl;
+    
+    std::optional<Account *> optAccount = activeVault.getAccount(accountName);
+    if (!optAccount.has_value()) {
         return;
     }
 
+    Account *account = optAccount.value();
+
     if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
-        std::cout << activeVault.getAccount(accountName).getUsername() << std::endl;
+        std::cout << account->getUsername() << std::endl;
     } else if (commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
-        std::cout << activeVault.getAccount(accountName).getPassword() << std::endl;
+        std::cout << account->getPassword() << std::endl;
     } else if (commandOpts.containsOpt(CommandLineOptions::NOTE_OPTION)) {
-        std::cout << activeVault.getAccount(accountName).getNote() << std::endl;
+        std::cout << account->getNote() << std::endl;
     } else {
-        const Account account = activeVault.getAccount(accountName);
-        std::cout << "un=" << account.getUsername() << '\n'
-            << "pw=" << account.getPassword() << '\n'
-            << "note=" << account.getNote() << std::endl;
+        std::cout << "un=" << account->getUsername() << '\n'
+            << "pw=" << account->getPassword() << '\n'
+            << "note=" << account->getNote() << std::endl;
     }
 }
 
@@ -300,21 +298,22 @@ void processAccountClipCommand(const CommandLineParser& commandOpts, Vault &acti
     Utils::debugPrint(std::cout, "Entered processAccountClipCommand\n");
 
     std::string accountName = getAccountName(commandOpts, CommandLineOptions::CLIP_OPTION);
-    if(!activeVault.exists(accountName)) {
-        std::cout << "Error: The specified account does not exist. You may create an account using the -a option." << std::endl;
+    
+    std::optional<Account *> optAccount = activeVault.getAccount(accountName);
+    if (!optAccount.has_value()) {
         return;
     }
 
+    Account *account = optAccount.value();
+
     // TODO: How to get xclip to not add a newline to end of copied string??
     if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
-        system(("echo " + activeVault.getAccount(accountName).getUsername() + " | xclip -selection c").c_str());
+        system(("echo " + account->getUsername() + " | xclip -selection c").c_str());
     } else if (commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
-        system(("echo " + activeVault.getAccount(accountName).getPassword() + " | xclip -selection c").c_str());
+        system(("echo " + account->getPassword() + " | xclip -selection c").c_str());
     } else {
-        std::cout << "Error: Invalid clip option. Valid options are -un and -pw." << std::endl;
+        handleInvalidCommand("Invalid clip option.");
     }
-
-    std::cout << "Copied requested content to clipboard." << std::endl;
     return;
 }
 
@@ -325,36 +324,36 @@ void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &ac
     Utils::debugPrint(std::cout, "Entered processAccountUpdateCommand\n");
 
     std::string accountName = getAccountName(commandOpts, CommandLineOptions::UPDATE_OPTION);
-    if(!activeVault.exists(accountName)) {
-        std::cout << "Error: The specified account does not exist. You may create an account using the -a option." << std::endl;
+    
+    std::optional<Account *> optAccount = activeVault.getAccount(accountName);
+    if (!optAccount.has_value()) {
         return;
     }
+
+    Account *account = optAccount.value();
 
     if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
         std::string username = commandOpts.getOpt(CommandLineOptions::USERNAME_OPTION);
         // Update the username of the given account
-        Account *account = &activeVault.getAccount(accountName);
         account->setUsername(username);
     } else if (commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
         std::string password = commandOpts.getOpt(CommandLineOptions::PASSWORD_OPTION);
         // Update the password of the given account
-        Account *account = &activeVault.getAccount(accountName);
         account->setPassword(password);
     } else if (commandOpts.containsOpt(CommandLineOptions::NOTE_OPTION)) {
         std::string note = commandOpts.getOpt(CommandLineOptions::NOTE_OPTION);
         // Update the note of the given account
-        Account *account = &activeVault.getAccount(accountName);
         account->setNote(note);
     } else if (commandOpts.containsOpt(CommandLineOptions::FILE_OPTION)) {
+        // TODO: Implement this
         std::string filePath = commandOpts.getOpt(CommandLineOptions::FILE_OPTION);
         // Update all details of the given account
-        Account account(accountName, filePath);
-        activeVault.addAccount(account);
+        Account newAccount(accountName, filePath);
+        //*account = newAccount;
     } else if (commandOpts.containsOpt(CommandLineOptions::DELETE_OPTION)) {
         activeVault.removeAccount(accountName);
     } else {
-        std::cout << "Error: Invalid account update option. Valid options are -un, -pw, -note, and -f." << std::endl;
-        return;
+        handleInvalidCommand("Invalid account update option.");
     }
 
     activeVault.writeVault();
@@ -367,11 +366,6 @@ void processAccountAddCommand(const CommandLineParser& commandOpts, Vault &activ
     Utils::debugPrint(std::cout, "Entered processAccountAddCommand\n");
 
     std::string accountName = getAccountName(commandOpts, CommandLineOptions::ADD_OPTION);
-
-    if (activeVault.exists(accountName)) {
-        std::cout << "Error: There already exists an account with the specified name." << std::endl;
-        return;
-    }
 
     if (commandOpts.containsOpt(CommandLineOptions::FILE_OPTION)) {
         std::string filePath = commandOpts.getOpt(CommandLineOptions::FILE_OPTION);

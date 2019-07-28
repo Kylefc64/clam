@@ -25,6 +25,7 @@ public:
     void listVaultNames() const;
     static bool validateKey(std::string key, const unsigned char *salt, const unsigned char *hash);
 private:
+    bool checkIfEmpty() const;
     void initialize();
     void readVaultMetaData();
     void writeVaultMetaData();

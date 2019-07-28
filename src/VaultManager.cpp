@@ -64,6 +64,10 @@ void VaultManager::addVault(const std::string &vaultName, const std::string &vau
 }
 
 void VaultManager::updateActiveVaultKey(const std::string &oldVaultKey, const std::string &newVaultKey) {
+    if (checkIfEmpty()) {
+        return;
+    }
+
     const unsigned char* activeVaultHash = vaultMetaData[0].vaultSkeyHash;
     unsigned char* activeVaultSalt = vaultMetaData[0].vaultSkeySalt;
     std::string activeVaultName = vaultMetaData[0].vaultName;
@@ -98,11 +102,10 @@ void VaultManager::updateActiveVaultKey(const std::string &oldVaultKey, const st
 }
 
 void VaultManager::switchActiveVault(const std::string &vaultKey, const std::string &vaultToSwitchToName) {
-    if (vaultMetaData.empty()) {
-        // Error if there is no active vault:
-        std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
+    if (checkIfEmpty()) {
         return;
-    } else if (vaultMetaData[0].vaultName == vaultToSwitchToName) {
+    }
+    if (vaultMetaData[0].vaultName == vaultToSwitchToName) {
         std::cout << "Error: " + vaultToSwitchToName + " is already the active vault." << std::endl;
         return;
     }
@@ -119,7 +122,7 @@ void VaultManager::switchActiveVault(const std::string &vaultKey, const std::str
 
             // Write updates to the VaultInfo vector to disk:
             writeVaultMetaData();
-            std::cout << "Switched to vault " + vaultMetaData[0].vaultName + "."<< std::endl;
+            std::cout << "Switched to vault " + vaultMetaData[0].vaultName + "." << std::endl;
             return;
         }
     }
@@ -129,11 +132,11 @@ void VaultManager::switchActiveVault(const std::string &vaultKey, const std::str
 }
 
 void VaultManager::deleteVault(const std::string &vaultKey, const std::string &vaultToDeleteName) {
-    std::string activeVaultName = vaultMetaData[0].vaultName;
-    if (vaultToDeleteName == "") {
-        std::cout << "Error: You must specify which vault to delete." << std::endl;
+    if (checkIfEmpty()) {
         return;
-    } else if (vaultToDeleteName == activeVaultName) {
+    }
+    std::string activeVaultName = vaultMetaData[0].vaultName;
+    if (vaultToDeleteName == activeVaultName) {
         std::cout << "Error: You cannot delete a vault that is currently active." << std::endl;
         return;
     }
@@ -164,6 +167,9 @@ void VaultManager::deleteVault(const std::string &vaultKey, const std::string &v
 }
 
 void VaultManager::listVaultNames() const {
+    if (checkIfEmpty()) {
+        return;
+    }
     for (int i = 0; i < vaultMetaData.size(); i++) {
         std::cout << vaultMetaData[i].vaultName << std::endl;
     }
@@ -179,6 +185,17 @@ bool VaultManager::validateKey(std::string key, const unsigned char *salt, const
         return false;
     }
     return true;
+}
+
+/**
+    Prints an error message and returns true if no vaults exist, and returns false otherwise.
+*/
+bool VaultManager::checkIfEmpty() const {
+    if (vaultMetaData.empty()) {
+        std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
+        return true;
+    }
+    return false;
 }
 
 /**

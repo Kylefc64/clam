@@ -99,47 +99,50 @@ void Vault::printInfo(std::ostream &outputStream) const {
 }
 
 /**
-    Returns a reference to the Account labeled 'tag.'
-    Assumes that an account with the given tag exists.
+    Returns a reference to the Account labeled 'tag,' or returns
+    std::nullopt if an account with the given tag does not exist.
 */
-Account& Vault::getAccount(const std::string &tag) {
+std::optional<Account *> Vault::getAccount(const std::string &tag) {
     for (int i = 0; i < accounts.size(); ++i) {
         if (accounts[i].getTag() == tag) {
-            return accounts[i];
+            return &accounts[i];
         }
     }
 
-    // TODO: Throw exception if this line is reached
-    return accounts[0]; // not reached
+    notExistsError();
+    return std::nullopt;
 }
 
 /**
-    Adds the given Account to the vault.
-    Assumes that an Account with the same tag does not already exist in the vault.
+    Adds the given Account to the vault, or prints an error
+    if an account with the given tag already exists.
 */
 void Vault::addAccount(Account account) {
-    accounts.push_back(account);
+    if (accounts.end() != 
+            std::find_if(accounts.begin(),
+            accounts.end(),
+            [account](const Account& a) { return a.getTag() == account.getTag(); })) {
+        existsError();
+    } else {
+        accounts.push_back(account);
+    }
 }
 
 /**
-    Removes the account with the given tag from the vault, if it exists.
+    Removes the account with the given tag from the
+    vault, or prints an error if it does not exist.
 */
 void Vault::removeAccount(const std::string& tag) {
-    std::remove_if(accounts.begin(), accounts.end(),
-                   [tag](Account a) { return a.getTag() == tag; });
-}
+    auto it = std::remove_if(
+                       accounts.begin(),
+                       accounts.end(),
+                       [tag](Account a) { return a.getTag() == tag; });
 
-/**
-    Returns true if an Account with the given tag exists and false otherwise.
-*/
-bool Vault::exists(const std::string &tag) {
-    for (int i = 0; i < accounts.size(); ++i) {
-        if (accounts[i].getTag() == tag) {
-            return true;
-        }
+    if (it == accounts.end()) {
+        notExistsError();
+    } else {
+        accounts.erase(it);
     }
-
-    return false;
 }
 
 /**
@@ -198,4 +201,31 @@ std::string Vault::getVaultName() const {
 
 std::string Vault::getVaultKey() const {
     return vaultKey;
+}
+
+/**
+    Returns true if an Account with the given tag exists and false otherwise.
+*/
+bool Vault::exists(const std::string &tag) const {
+    for (int i = 0; i < accounts.size(); ++i) {
+        if (accounts[i].getTag() == tag) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+    Prints an error to the console indicating that a specified account does not exist.
+*/
+void Vault::notExistsError() const {
+    std::cout << "Error: The specified account does not exist. You may create an account using the -a option." << std::endl;
+}
+
+/**
+    Prints an error to the console indicating that a specified account already exists.
+*/
+bool Vault::existsError() const {
+    std::cout << "Error: There already exists an account with the specified name." << std::endl;
 }
