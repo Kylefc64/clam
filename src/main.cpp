@@ -6,14 +6,14 @@
 #include "CommandLineParser.h"
 #include "Vault.h"
 #include "Utils.h"
-#include "VaultMetadata.h"
+#include "VaultManager.h"
 
 std::string getVaultKey(const CommandLineParser& commandOpts);
 std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt);
 
-void processVaultCommand(const CommandLineParser& commandOpts, VaultMetadata &vaultMetaData);
+void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager);
 void processHelpCommand();
-void processAccountCommand(const CommandLineParser& commandOpts, VaultMetadata &vaultMetaData);
+void processAccountCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager);
 void processAccountPrintCommand(const CommandLineParser& commandOpts, Vault &activeVault);
 void processAccountClipCommand(const CommandLineParser& commandOpts, Vault &activeVault);
 void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &activeVault);
@@ -23,18 +23,17 @@ int main(int argc, char *argv[]) {
     Utils::debugDisable();
     Utils::debugPrint(std::cout, "Entered main\n");
 
-    VaultMetadata vaultMetaData;
-    vaultMetaData.initialize();
+    VaultManager vaultManager;
 
     CommandLineParser commandOpts(argc, argv);
     if (commandOpts.containsOpt(CommandLineOptions::VAULT_OPTION)) {
         // This is a vault command
-        processVaultCommand(commandOpts, vaultMetaData);
+        processVaultCommand(commandOpts, vaultManager);
     } else if (commandOpts.containsOpt(CommandLineOptions::HELP_OPTION)) {
         processHelpCommand();
     } else {
         // This is a command that pertains to some account (or accounts) in the currently active vault
-        processAccountCommand(commandOpts, vaultMetaData);
+        processAccountCommand(commandOpts, vaultManager);
     }
 }
 
@@ -66,12 +65,12 @@ std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOpti
 /**
     Process a command that pertains to an entire vault.
 */
-void processVaultCommand(const CommandLineParser& commandOpts, VaultMetadata &vaultMetaData) { 
+void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager) { 
     Utils::debugPrint(std::cout, "Entered processVaultCommand\n");
 
     std::string metaCommand = commandOpts.getOpt(CommandLineOptions::VAULT_OPTION);
     if (metaCommand == "list" && !commandOpts.containsOpt(CommandLineOptions::KEY_OPTION)) {
-        vaultMetaData.listVaultNames();
+        vaultManager.listVaultNames();
         return;
     }
 
@@ -86,10 +85,10 @@ void processVaultCommand(const CommandLineParser& commandOpts, VaultMetadata &va
         }
     
         Utils::debugPrint(std::cout, newVaultName + " newVaultname \n");
-        vaultMetaData.addVault(newVaultName, vaultKey);
+        vaultManager.addVault(newVaultName, vaultKey);
     } else if (metaCommand == "update") {
         // Error if there is no active vault:
-        if (vaultMetaData.empty()) {
+        if (vaultManager.empty()) {
             std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
             return;
         }
@@ -101,29 +100,29 @@ void processVaultCommand(const CommandLineParser& commandOpts, VaultMetadata &va
             return;
         }
 
-        vaultMetaData.updateActiveVaultKey(vaultKey, newVaultKey);
+        vaultManager.updateActiveVaultKey(vaultKey, newVaultKey);
     } else if (metaCommand == "switch") {
         std::string vaultToSwitchToName = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
         if (vaultToSwitchToName == "") {
             std::cout << "Error: Must provide the name of the vault to which you wish to switch to." << std::endl;
         }
 
-        vaultMetaData.switchActiveVault(vaultKey, vaultToSwitchToName);     
+        vaultManager.switchActiveVault(vaultKey, vaultToSwitchToName);     
     } else if (metaCommand == "delete") {
         // Error if there is no active vault:
-        if (vaultMetaData.empty()) {
+        if (vaultManager.empty()) {
             std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
             return;
         }
 
         std::string vaultToDeleteName = commandOpts.getOpt(CommandLineOptions::NAME_OPTION);
-        vaultMetaData.deleteVault(vaultKey, vaultToDeleteName);
+        vaultManager.deleteVault(vaultKey, vaultToDeleteName);
 
     } else if (metaCommand == "list") {
-        if (!VaultMetadata::validateKey(vaultKey, vaultMetaData.activeVaultInfo().vaultSkeySalt, vaultMetaData.activeVaultInfo().vaultSkeyHash)) {
+        if (!VaultManager::validateKey(vaultKey, vaultManager.activeVaultInfo().vaultSkeySalt, vaultManager.activeVaultInfo().vaultSkeyHash)) {
             return;
         }
-        Vault activeVault(vaultMetaData.activeVaultInfo().vaultName, vaultKey);
+        Vault activeVault(vaultManager.activeVaultInfo().vaultName, vaultKey);
 
         if (commandOpts.containsOpt(CommandLineOptions::INFO_OPTION)) {
             activeVault.printInfo(std::cout);
@@ -224,18 +223,18 @@ void processHelpCommand() {
 /**
     Processes a command that pertains to some account in the currently active vault.
 */
-void processAccountCommand(const CommandLineParser& commandOpts, VaultMetadata &vaultMetaData) {
+void processAccountCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager) {
     Utils::debugPrint(std::cout, "Entered processAccountCommand\n");
 
     std::string vaultKey = getVaultKey(commandOpts);
 
-    if (vaultMetaData.empty()) {
+    if (vaultManager.empty()) {
         if (commandOpts.containsOpt(CommandLineOptions::ADD_OPTION)) {
             // Create a "default" vault to allow the user to add an account without first explicitly
             // creating a vault. The default vault's password is the password provided to the
             // add account command.
 
-            vaultMetaData.addVault("default_vault", vaultKey);
+            vaultManager.addVault("default_vault", vaultKey);
         } else {
             std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
             return;
@@ -243,12 +242,12 @@ void processAccountCommand(const CommandLineParser& commandOpts, VaultMetadata &
     }
 
     // Verify that vaultKey is correct and report error and exit if not:
-    if (!VaultMetadata::validateKey(vaultKey, vaultMetaData.activeVaultInfo().vaultSkeySalt, vaultMetaData.activeVaultInfo().vaultSkeyHash)) {
+    if (!VaultManager::validateKey(vaultKey, vaultManager.activeVaultInfo().vaultSkeySalt, vaultManager.activeVaultInfo().vaultSkeyHash)) {
         return;
     }
 
     // Attempt to load and decrypt vault:
-    Vault activeVault(vaultMetaData.activeVaultInfo().vaultName, vaultKey);
+    Vault activeVault(vaultManager.activeVaultInfo().vaultName, vaultKey);
     if (commandOpts.containsOpt(CommandLineOptions::PRINT_OPTION)) {
         processAccountPrintCommand(commandOpts, activeVault);
     } else if (commandOpts.containsOpt(CommandLineOptions::CLIP_OPTION)) {
@@ -291,7 +290,7 @@ void processAccountPrintCommand(const CommandLineParser& commandOpts, Vault &act
 
 /**
     Processes a clip command. Assumes the active vault has successfully been decrypted.
-    
+
     Resources:
         https://stackoverflow.com/questions/6436257/how-do-you-copy-paste-from-the-clipboard-in-c
         https://stackoverflow.com/questions/40436045/in-qt-how-can-i-register-a-qstring-to-my-systems-clipboard-both-quoted-and-no/40437290#40437290

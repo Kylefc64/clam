@@ -1,77 +1,30 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <algorithm>
 #include <fstream>
 #include <cstring>
 
-#include "VaultMetadata.h"
+#include "VaultManager.h"
 #include "Utils.h"
 
-/**
-    Reads all vault metadata from the meta/meta file and creates the meta and vaults
-    directories if they do not yet exist. Stores all vault metadata in the 'vaultMetaData'
-    vector.
-*/
-void VaultMetadata::initialize() {
-    Utils::debugPrint(std::cout, "Entered initialize\n");
-
-    struct stat info;
-    if (((stat("meta", &info) != 0)) ||
-        ((stat("vaults", &info) != 0))) {
-        // meta or vaults directories do not exist:
-        
-        // Create empty meta and vaults directories:
-        system("mkdir meta/");
-        system("mkdir vaults/");
-        //system("touch meta/meta");
-        //system("touch vaults/default");
-    } else if ((stat("meta/meta", &info) != 0)) {
-        // meta/meta file does not exist:
-    } else {
-        // Read meta/meta file:
-        readVaultMetaData();
-    }
+VaultManager::VaultManager() {
+    initialize();
 }
 
-/**
-    Write all of the vaultMetaData vector to the vault metadata file.
-    The vault metadata is written to the file in the following format:
-
-    uint32: n = number of vaults
-    
-    uint32: s = size of the active vault's name (in bytes)
-    s bytes: name = active vault's name
-    32 bytes: active vault's hash = sha256(sha256(vaultKey) || salt)
-    32 bytes: active vault's salt = some random 32-byte value
-
-    <repeated n times>:
-        uint32: s = size of the vault's name (in bytes)
-        s bytes: name = vault's name
-        32 bytes: hash = sha256(sha256(vaultKey) || salt)
-        32 bytes: salt = some random 32-byte value
-*/
-void VaultMetadata::writeVaultMetaData() {
-    Utils::debugPrint(std::cout, "Entered writeVaultMetaData\n");
-
-    std::ofstream fileStream("meta/meta");
-
-    uint32_t numVaults = vaultMetaData.size();
-    fileStream.write((char *)&numVaults, sizeof(numVaults));
-
-    VaultInfo vaultInfo;
-    uint32_t vaultNameSize;
-    for (int i = 0; i < numVaults; ++i) {
-        vaultInfo = vaultMetaData[i];
-        vaultNameSize = vaultInfo.vaultName.size();
-        fileStream.write((char *)&vaultNameSize, sizeof(vaultNameSize)); // write vault name's size
-        fileStream.write((char *)vaultInfo.vaultName.c_str(), vaultNameSize); // write vaultName to file
-        fileStream.write((char *)vaultInfo.vaultSkeyHash, SKEY_LENGTH);
-        fileStream.write((char *)vaultInfo.vaultSkeySalt, SKEY_LENGTH);
-    }
-    fileStream.close();
+bool VaultManager::empty() const {
+    return vaultMetaData.empty();
 }
 
-void VaultMetadata::addVault(const std::string &vaultName, const std::string &vaultKey) {
+unsigned int VaultManager::size() const {
+    return vaultMetaData.size();
+}
+
+VaultInfo& VaultManager::activeVaultInfo() {
+    return vaultMetaData[0];
+}
+
+void VaultManager::addVault(const std::string &vaultName, const std::string &vaultKey) {
     VaultInfo newVaultInfo;
     newVaultInfo.vaultName = vaultName;
 
@@ -101,12 +54,6 @@ void VaultMetadata::addVault(const std::string &vaultName, const std::string &va
     // Add new vault metadata to vector of vault metadatam:
     vaultMetaData.push_back(newVaultInfo);
 
-    // Switch active vault to the new vault if there is no active vault (activeVaultName == ""):
-    // Since the meta file is empty, the new vault metadata need to be written twice because the top 
-    //       spot in the metadata is reserved for a duplicate used to indicate which vault is active
-    if (vaultMetaData.size() == 1) {
-        vaultMetaData.push_back(newVaultInfo);
-    }
     Utils::debugPrint(std::cout, newVaultInfo.vaultName + " new vault name \n");
     Utils::debugPrint(std::cout, "creating new vault using key = " + vaultKey + "\n");
     Utils::debugPrint(std::cout, std::to_string(newVaultInfo.vaultSkeyHash[0]) + " new vault hash \n");
@@ -116,27 +63,7 @@ void VaultMetadata::addVault(const std::string &vaultName, const std::string &va
     writeVaultMetaData();
 }
 
-bool VaultMetadata::empty() const {
-    return vaultMetaData.empty();
-}
-
-unsigned int VaultMetadata::size() const {
-    return vaultMetaData.size();
-}
-
-VaultInfo& VaultMetadata::activeVaultInfo() {
-    return vaultMetaData[0];
-}
-
-void VaultMetadata::listVaultNames() const {
-    for (int i = 0; i < vaultMetaData.size(); i++) {
-        if ((0 == i) || (vaultMetaData[i].vaultName != vaultMetaData[0].vaultName)) {
-            std::cout << vaultMetaData[i].vaultName << std::endl;
-        }
-    }
-}
-
-void VaultMetadata::updateActiveVaultKey(const std::string &oldVaultKey, const std::string &newVaultKey) {
+void VaultManager::updateActiveVaultKey(const std::string &oldVaultKey, const std::string &newVaultKey) {
     const unsigned char* activeVaultHash = vaultMetaData[0].vaultSkeyHash;
     unsigned char* activeVaultSalt = vaultMetaData[0].vaultSkeySalt;
     std::string activeVaultName = vaultMetaData[0].vaultName;
@@ -170,7 +97,7 @@ void VaultMetadata::updateActiveVaultKey(const std::string &oldVaultKey, const s
     updateVaultInfo(upadatedVaultInfo);
 }
 
-void VaultMetadata::switchActiveVault(const std::string &vaultKey, const std::string &vaultToSwitchToName) {
+void VaultManager::switchActiveVault(const std::string &vaultKey, const std::string &vaultToSwitchToName) {
     if (vaultMetaData.empty()) {
         // Error if there is no active vault:
         std::cout << "Error: You must first create a vault using the -v add command." << std::endl;
@@ -187,8 +114,8 @@ void VaultMetadata::switchActiveVault(const std::string &vaultKey, const std::st
             if (!validateKey(vaultKey, vaultMetaData[i].vaultSkeySalt, vaultMetaData[i].vaultSkeyHash)) {
                 return;
             }
-            // copy its metadata to the 0th position in the VaultInfo vector:
-            vaultMetaData[0] = vaultMetaData[i];
+            // Swap positions of current active vault and desired active vault
+            std::swap(vaultMetaData[0], vaultMetaData[i]);
 
             // Write updates to the VaultInfo vector to disk:
             writeVaultMetaData();
@@ -201,7 +128,7 @@ void VaultMetadata::switchActiveVault(const std::string &vaultKey, const std::st
     std::cout << "Error: No vault with the name of \"" + vaultToSwitchToName + "\" exist" << std::endl;
 }
 
-void VaultMetadata::deleteVault(const std::string &vaultKey, const std::string &vaultToDeleteName) {
+void VaultManager::deleteVault(const std::string &vaultKey, const std::string &vaultToDeleteName) {
     std::string activeVaultName = vaultMetaData[0].vaultName;
     if (vaultToDeleteName == "") {
         std::cout << "Error: You must specify which vault to delete." << std::endl;
@@ -236,16 +163,48 @@ void VaultMetadata::deleteVault(const std::string &vaultKey, const std::string &
     return;
 }
 
+void VaultManager::listVaultNames() const {
+    for (int i = 0; i < vaultMetaData.size(); i++) {
+        std::cout << vaultMetaData[i].vaultName << std::endl;
+    }
+}
+
 /**
     Returns true if the provided vaultKey verifies using the given salt and salted hash values.
     Returns False and reports an error otherwise.
 */
-bool VaultMetadata::validateKey(std::string key, const unsigned char *salt, const unsigned char *hash) {
+bool VaultManager::validateKey(std::string key, const unsigned char *salt, const unsigned char *hash) {
     if (!Utils::verifyKey(key, salt, hash, SKEY_LENGTH)) {
         std::cout << "Error: The provided vault key is incorrect." << std::endl;
         return false;
     }
     return true;
+}
+
+/**
+    Reads all vault metadata from the meta/meta file and creates the meta and vaults
+    directories if they do not yet exist. Stores all vault metadata in the 'vaultMetaData'
+    vector.
+*/
+void VaultManager::initialize() {
+    Utils::debugPrint(std::cout, "Entered initialize\n");
+
+    struct stat info;
+    if (((stat("meta", &info) != 0)) ||
+        ((stat("vaults", &info) != 0))) {
+        // meta or vaults directories do not exist:
+        
+        // Create empty meta and vaults directories:
+        system("mkdir meta/");
+        system("mkdir vaults/");
+        //system("touch meta/meta");
+        //system("touch vaults/default");
+    } else if ((stat("meta/meta", &info) != 0)) {
+        // meta/meta file does not exist:
+    } else {
+        // Read meta/meta file:
+        readVaultMetaData();
+    }
 }
 
 /**
@@ -259,13 +218,13 @@ bool VaultMetadata::validateKey(std::string key, const unsigned char *salt, cons
     32 bytes: active vault's hash = sha256(sha256(vaultKey) || salt)
     32 bytes: active vault's salt = some random 32-byte value
 
-    <repeated n times>:
+    <repeated n-1 times>:
         uint32: s = size of the vault's name (in bytes)
         s bytes: name = vault's name
         32 bytes: hash = sha256(sha256(vaultKey) || salt)
         32 bytes: salt = some random 32-byte value
 */
-void VaultMetadata::readVaultMetaData() {
+void VaultManager::readVaultMetaData() {
     Utils::debugPrint(std::cout, "Entered readVaultMetaData\n");
 
     std::ifstream fileStream("meta/meta");
@@ -286,13 +245,49 @@ void VaultMetadata::readVaultMetaData() {
     fileStream.close();
 }
 
-void VaultMetadata::updateVaultInfo(VaultInfo &updatedVaultInfo) {
+/**
+    Write all of the vaultMetaData vector to the vault metadata file.
+    The vault metadata is written to the file in the following format:
+
+    uint32: n = number of vaults
+    
+    uint32: s = size of the active vault's name (in bytes)
+    s bytes: name = active vault's name
+    32 bytes: active vault's hash = sha256(sha256(vaultKey) || salt)
+    32 bytes: active vault's salt = some random 32-byte value
+
+    <repeated n-1 times>:
+        uint32: s = size of the vault's name (in bytes)
+        s bytes: name = vault's name
+        32 bytes: hash = sha256(sha256(vaultKey) || salt)
+        32 bytes: salt = some random 32-byte value
+*/
+void VaultManager::writeVaultMetaData() {
+    Utils::debugPrint(std::cout, "Entered writeVaultMetaData\n");
+
+    std::ofstream fileStream("meta/meta");
+
+    uint32_t numVaults = vaultMetaData.size();
+    fileStream.write((char *)&numVaults, sizeof(numVaults));
+
+    VaultInfo vaultInfo;
+    uint32_t vaultNameSize;
+    for (int i = 0; i < numVaults; ++i) {
+        vaultInfo = vaultMetaData[i];
+        vaultNameSize = vaultInfo.vaultName.size();
+        fileStream.write((char *)&vaultNameSize, sizeof(vaultNameSize)); // write vault name's size
+        fileStream.write((char *)vaultInfo.vaultName.c_str(), vaultNameSize); // write vaultName to file
+        fileStream.write((char *)vaultInfo.vaultSkeyHash, SKEY_LENGTH);
+        fileStream.write((char *)vaultInfo.vaultSkeySalt, SKEY_LENGTH);
+    }
+    fileStream.close();
+}
+
+void VaultManager::updateVaultInfo(VaultInfo &updatedVaultInfo) {
     // Search in vaultMetaData for VaultInfo to update
-    for (int i = 1; i < vaultMetaData.size(); i++) { 
+    for (int i = 0; i < vaultMetaData.size(); i++) { 
         if (vaultMetaData[i].vaultName == updatedVaultInfo.vaultName) {
-            // overwrite the metadata of the corresponding vault, 
-            //  along with the active vault duplicate
-            vaultMetaData[0] = updatedVaultInfo;
+            // overwrite the metadata of the corresponding vault:
             vaultMetaData[i] = updatedVaultInfo;
             break;
         }

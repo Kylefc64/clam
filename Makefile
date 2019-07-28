@@ -6,7 +6,7 @@ CXX=g++
 CXXFLAGS=-std=c++17 -g -I include
 LIBFLAGS=-ltomcrypt
 PROG=$(BUILD_DIR)pml
-OBJS=$(BUILD_DIR)main.o $(BUILD_DIR)CommandLineParser.o $(BUILD_DIR)Vault.o $(BUILD_DIR)Account.o $(BUILD_DIR)Utils.o $(BUILD_DIR)VaultMetadata.o
+OBJS=$(BUILD_DIR)main.o $(BUILD_DIR)CommandLineParser.o $(BUILD_DIR)Vault.o $(BUILD_DIR)Account.o $(BUILD_DIR)Utils.o $(BUILD_DIR)VaultManager.o
 
 $(PROG): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(PROG) $(OBJS) $(LIBFLAGS)
@@ -26,8 +26,8 @@ $(BUILD_DIR)Account.o: $(SRC_DIR)Account.cpp $(INCLUDE_DIR)Account.h $(INCLUDE_D
 $(BUILD_DIR)Utils.o: $(SRC_DIR)Utils.cpp $(INCLUDE_DIR)Utils.h
 	$(CXX) $(CXXFLAGS) -c $(SRC_DIR)Utils.cpp -o $@
 
-$(BUILD_DIR)VaultMetadata.o: $(SRC_DIR)VaultMetadata.cpp $(INCLUDE_DIR)VaultMetadata.h $(INCLUDE_DIR)Account.h $(INCLUDE_DIR)Utils.h
-	$(CXX) $(CXXFLAGS) -c $(SRC_DIR)VaultMetadata.cpp -o $@
+$(BUILD_DIR)VaultManager.o: $(SRC_DIR)VaultManager.cpp $(INCLUDE_DIR)VaultManager.h $(INCLUDE_DIR)Account.h $(INCLUDE_DIR)Utils.h
+	$(CXX) $(CXXFLAGS) -c $(SRC_DIR)VaultManager.cpp -o $@
 
 clean:
 	rm $(PROG) $(OBJS) $(TEST_DIR)pml

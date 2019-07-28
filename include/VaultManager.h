@@ -12,21 +12,22 @@ struct VaultInfo {
     std::string vaultName;
 };
 
-class VaultMetadata {
+class VaultManager {
 public:
-    void initialize();
-    void writeVaultMetaData();
-    void addVault(const std::string &vaultName, const std::string &vaultKey);
+    VaultManager();
     bool empty() const;
     unsigned int size() const;
     VaultInfo& activeVaultInfo();
-    void listVaultNames() const;
+    void addVault(const std::string &vaultName, const std::string &vaultKey);
     void updateActiveVaultKey(const std::string &oldVaultKey, const std::string &newVaultKey);
     void switchActiveVault(const std::string &vaultKey, const std::string &vaultToSwitchToName);
     void deleteVault(const std::string &vaultKey, const std::string &vaultToDeleteName);
+    void listVaultNames() const;
     static bool validateKey(std::string key, const unsigned char *salt, const unsigned char *hash);
 private:
+    void initialize();
     void readVaultMetaData();
+    void writeVaultMetaData();
     void updateVaultInfo(VaultInfo &updatedVaultInfo);
     std::vector<VaultInfo> vaultMetaData;
 };
