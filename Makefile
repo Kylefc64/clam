@@ -2,11 +2,14 @@ SRC_DIR=src/
 INCLUDE_DIR=include/
 BUILD_DIR=build/
 BIN_DIR=bin/
+INSTALL_DIR=/usr/local/bin/
 TEST_DIR=test/
 CXX=g++
 CXXFLAGS=-std=c++17 -g -I include
 LIBFLAGS=-ltomcrypt
-PROG=$(BIN_DIR)pml
+PROG_NAME=clam
+TEST=$(TEST_DIR)run_tests.py
+PROG=$(BIN_DIR)$(PROG_NAME)
 OBJS=$(BUILD_DIR)main.o $(BUILD_DIR)CommandLineParser.o $(BUILD_DIR)Vault.o $(BUILD_DIR)Account.o $(BUILD_DIR)Utils.o $(BUILD_DIR)VaultManager.o
 
 $(PROG): $(OBJS)
@@ -30,14 +33,20 @@ $(BUILD_DIR)Utils.o: $(SRC_DIR)Utils.cpp $(INCLUDE_DIR)Utils.h
 $(BUILD_DIR)VaultManager.o: $(SRC_DIR)VaultManager.cpp $(INCLUDE_DIR)VaultManager.h $(INCLUDE_DIR)Account.h $(INCLUDE_DIR)Utils.h
 	$(CXX) $(CXXFLAGS) -c $(SRC_DIR)VaultManager.cpp -o $@
 
-clean:
-	rm $(PROG) $(OBJS) $(TEST_DIR)pml
+install: $(PROG)
+	cp $(PROG) $(INSTALL_DIR); chmod +x $(INSTALL_DIR)$(PROG_NAME)
 
-test: $(PROG)
-	cp $(PROG) $(TEST_DIR); cd $(TEST_DIR); python3 run_tests.py
+uninstall: $(PROG)
+	rm -rf $(INSTALL_DIR)$(PROG_NAME)
+
+clean:
+	rm $(PROG) $(OBJS)
+
+test: $(PROG) $(TEST)
+	python3 $(TEST)
 
 run: $(PROG)
 	./$(PROG)
 
 .PHONY:
-	clean run clean
+	install uninstall clean test run

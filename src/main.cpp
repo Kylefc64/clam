@@ -13,6 +13,8 @@
 #include "Utils.h"
 #include "VaultManager.h"
 
+const std::string getProgramName(char *argv[]);
+const std::string getUserHomeDir();
 void initDataDirs(const std::string &programDataDir, const std::string &vaultDir);
 const std::string getVaultKey(const CommandLineParser& commandOpts);
 const std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt);
@@ -30,13 +32,8 @@ int main(int argc, char *argv[]) {
     Utils::debugDisable();
     Utils::debugPrint(std::cout, "Entered main\n");
 
-    // Get user's home directory (https://stackoverflow.com/questions/2910377/get-home-directory-in-linux):
-    const char *userHomeDir;
-    if (NULL == (userHomeDir = getenv("HOME"))) {
-        userHomeDir = getpwuid(getuid())->pw_dir;
-    }
-
-    const std::string programName = "pml";
+    const std::string programName = getProgramName(argv);
+    const std::string userHomeDir = getUserHomeDir();
     const std::string programDataDir = std::string(userHomeDir) + "/." + programName + "/";
     const std::string metadataFilePath = programDataDir + "meta";
     const std::string vaultDir = programDataDir + "vaults/";
@@ -55,6 +52,33 @@ int main(int argc, char *argv[]) {
         // This is a command that pertains to some account (or accounts) in the currently active vault
         processAccountCommand(commandOpts, vaultManager);
     }
+}
+
+/**
+    Parses and returns the program's name from the command line args to this program.
+*/
+const std::string getProgramName(char *argv[]) {
+    std::string binPath(argv[0]);
+    std::string progName = binPath;
+    std::size_t pos = 0;
+    while ((pos = binPath.find('/', pos)) != std::string::npos) {
+        progName = binPath.substr(++pos, binPath.size() - 1);
+    }
+
+    return progName;
+}
+
+/**
+    Gets and returns the path to this user's home directory.
+*/
+const std::string getUserHomeDir() {
+    // Get user's home directory (https://stackoverflow.com/questions/2910377/get-home-directory-in-linux):
+    const char *userHomeDir;
+    if (NULL == (userHomeDir = getenv("HOME"))) {
+        userHomeDir = getpwuid(getuid())->pw_dir;
+    }
+
+    return std::string(userHomeDir);
 }
 
 /**
@@ -176,15 +200,15 @@ void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vau
     Standard format taken from: http://docopt.org/
 
     Usage:
-        pml --vault (add --name <vault-name> --key <vault-key>
+        clam --vault (add --name <vault-name> --key <vault-key>
             | update --key <vault-key> --knew <new-key>
             | switch --name <vault-name> --key <vault-key>
             | delete --name <vault-name> --key <vault-key>
             | list [--key <vault-key> [--info]])
-        pml --print <account-name> --key <vault-key> [--username | --password | --note]
-        pml --clip <account-name> --key <vault-key> --username | --password
-        pml --update <account-name> --key <vault-key> (--username <username> | --password <password> | --note <note> | --file <file-path> | --delete)
-        pml --add <account-name> --key <vault-key> [--file <file-path> | --username <username> --password <password>]
+        clam --print <account-name> --key <vault-key> [--username | --password | --note]
+        clam --clip <account-name> --key <vault-key> --username | --password
+        clam --update <account-name> --key <vault-key> (--username <username> | --password <password> | --note <note> | --file <file-path> | --delete)
+        clam --add <account-name> --key <vault-key> [--file <file-path> | --username <username> --password <password>]
 
     Options:
         -v, --vault=vault-opt           vault command (options are: add, update, switch, delete, or list)
@@ -212,19 +236,19 @@ void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vau
 */
 void processHelpCommand() {
     std::cout << "Usage:\n"
-        << "    pml --vault (add --name <vault-name> --key <vault-key>\n"
+        << "    clam --vault (add --name <vault-name> --key <vault-key>\n"
         << "        | update --key <vault-key> --knew <new-key>\n"
         << "        | switch --name <vault-name> --key <vault-key>\n"
         << "        | delete --name <vault-name> --key <vault-key>\n"
         << "        | list [--key <vault-key> [--info]])\n"
-        << "    pml --print <account-name> --key <vault-key> [--username | --password | --note]\n"
-        << "    pml --clip <account-name> --key <vault-key> --username | --password\n"
-        << "    pml --update <account-name> --key <vault-key> (--username <username>\n"
+        << "    clam --print <account-name> --key <vault-key> [--username | --password | --note]\n"
+        << "    clam --clip <account-name> --key <vault-key> --username | --password\n"
+        << "    clam --update <account-name> --key <vault-key> (--username <username>\n"
         << "                                                  | --password <password>\n"
         << "                                                  | --note <note>\n"
         << "                                                  | --file <file-path>\n"
         << "                                                  | --delete)\n"
-        << "    pml --add <account-name> --key <vault-key> [--file <file-path>\n"
+        << "    clam --add <account-name> --key <vault-key> [--file <file-path>\n"
         << "                                               | --username <username> --password <password>]\n\n"
 
     << "Options:\n"

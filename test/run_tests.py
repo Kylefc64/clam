@@ -43,10 +43,16 @@ class Account:
         self.note = note
 
 """
+    Returns the name of the program.
+"""
+def program_name():
+    return 'clam'
+
+"""
     Returns the location where program data is stored.
 """
 def program_data_dir():
-    return str(Path.home()) + "/.pml/"
+    return str(Path.home()) + '/.' + program_name() + '/'
 
 """
     Given the expected lines, builds a string containing all of those lines separated by newlines.
@@ -64,11 +70,9 @@ def construct_cmd(*args):
 def clean_dir():
     exec_cmd(construct_cmd('rm', '-rf', program_data_dir()))
 
-def test_vault():
+def test_vault(exec):
     # tests vault commands
     clean_dir()
-
-    exec = './pml'
 
     vault1_name, vault1_key = 'vault1', 'key1'
     vault2_name, vault2_key = 'vault2', 'key2'
@@ -193,11 +197,9 @@ def list_command(exec, vault_key=None, info=False):
             'list')
     return exec_cmd(cmd)
 
-def test_print():
+def test_print(exec):
     # tests print commands
     clean_dir()
-
-    exec = './pml'
 
     acct_tag = 'acct123'
     vault_key = 'key123'
@@ -243,11 +245,9 @@ def get_clipboard_data():
     data = p.stdout.read()
     return data
 
-def test_clip():
+def test_clip(exec):
     # tests clip commands
     clean_dir()
-
-    exec = './pml'
 
     acct_tag = 'acct123'
     vault_key = 'key123'
@@ -281,11 +281,9 @@ def clip_command(exec, account_name, vault_key, option):
             vault_key,
             option))
 
-def test_update():
+def test_update(exec):
     # tests update commands
     clean_dir()
-
-    exec = './pml'
 
     vault_name, vault_key = 'vault1', 'key1'
 
@@ -360,11 +358,9 @@ def update_command(exec, account_name, vault_key, option, arg=None):
             arg)
     return exec_cmd(cmd)
 
-def test_add():
+def test_add(exec):
     # tests add commands
     clean_dir()
-
-    exec = './pml'
 
     vault_name, vault_key = 'vault1', 'key1'
 
@@ -444,8 +440,9 @@ def add_command(exec, account_name, vault_key, un=None, pw=None, file_path=None)
     return exec_cmd(cmd)
 
 if __name__ == "__main__":
-    test_vault()
-    test_print()
-    #test_clip()
-    test_update()
-    test_add()
+    exec = './bin/' + program_name()
+    test_vault(exec)
+    test_print(exec)
+    #test_clip(exec)
+    test_update(exec)
+    test_add(exec)
