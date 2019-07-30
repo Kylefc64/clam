@@ -1,4 +1,6 @@
+# -*- coding: UTF-8 -*-
 import subprocess
+import os
 from pathlib import Path
 
 class CommandLineOptions():
@@ -62,13 +64,27 @@ def build_console_output(*lines):
 
 ## Executes the given command and returns the output void of trailing whitespace.
 def exec_cmd(cmd):
-    return subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.read().decode('UTF-8').rstrip('\t\n ')
+    # issues with python subprocess module cause deadlock when write size exceeds ~65,000 characters
+    # a stackoverflow post and python 2 documentation suggest using communication() instead will prevent the issue, but that is not nenessarily true
+    # https://stackoverflow.com/questions/14433712/python-popen-stdout-read-hang
+    # So far the only working solution is to direct subprocess stdout into a file instead of PIPE, as detailed in the post below
+    # https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
+
+    # return subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.read().decode('UTF-8').rstrip('\t\n ')
+    tempfile = open('./test/temp', 'w+')
+    process = subprocess.Popen(cmd, shell=True, stdout=tempfile)
+    process.wait()
+    tempfile.seek(0)
+    exec_output = tempfile.read().rstrip('\t\n ')
+    tempfile.close()
+    return exec_output
 
 def construct_cmd(*args):
     return ''.join([arg + ' ' for arg in args]).rstrip(' ')
 
 def clean_dir():
     exec_cmd(construct_cmd('rm', '-rf', program_data_dir()))
+    os.remove('./test/temp')
 
 def test_vault(exec):
     # tests vault commands
@@ -242,7 +258,7 @@ def print_command(exec, account_name, vault_key, option=None):
 def get_clipboard_data():
     p = subprocess.Popen(['xclip','-selection', 'clipboard', '-o'], stdout=subprocess.PIPE)
     retcode = p.wait()
-    data = p.stdout.read()
+    data = p.stdout.read().decode('UTF-8').rstrip('\n')
     return data
 
 def test_clip(exec):
@@ -258,14 +274,11 @@ def test_clip(exec):
 
     add_command(exec, acct_tag, vault_key, username, password, None)
 
-    # TODO: Fix clip_command (hangs indefinitely)
     clip_command(exec, acct_tag, vault_key, CommandLineOptions.USERNAME_OPTION)
-    #print(get_clipboard_data()) # assertion here
+    # print(get_clipboard_data()) # assertion here
     test_suite.assert_equals(build_console_output(username), get_clipboard_data())
-
-    # TODO: Fix clip_command (hangs indefinitely)
     clip_command(exec, acct_tag, vault_key, CommandLineOptions.PASSWORD_OPTION)
-    #print(get_clipboard_data()) # assertion here
+    # print(get_clipboard_data()) # assertion here
     test_suite.assert_equals(build_console_output(password), get_clipboard_data())
 
     test_suite.finish()
@@ -273,13 +286,14 @@ def test_clip(exec):
     clean_dir()
 
 def clip_command(exec, account_name, vault_key, option):
-    return exec_cmd(construct_cmd(
+    cmd = construct_cmd(
             exec,
             CommandLineOptions.CLIP_OPTION,
             account_name,
             CommandLineOptions.KEY_OPTION,
             vault_key,
-            option))
+            option)
+    return exec_cmd(cmd)
 
 def test_update(exec):
     # tests update commands
@@ -291,12 +305,12 @@ def test_update(exec):
     acct1_un_new, acct1_pw_new, acct1_note_new = 'un-new1', 'pw-new1', 'note-new1'
     acct2_tag, acct2_un, acct2_pw, acct2_note = 'acct1-2', 'un1-2', 'pw1-2', 'note2'
     acct2_un_new, acct2_pw_new, acct2_note_new = 'un-new2', 'pw-new2', 'line1\nline2\nline3\nline4'
-
+    
     test_suite = TestSuite('test_update')
 
     add_command(exec, acct1_tag, vault_key, acct1_un, acct1_pw, None)
     update_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION, acct1_note)
-
+    
     test_suite.assert_equals(build_console_output(acct1_un), print_command(exec, acct1_tag, vault_key, CommandLineOptions.USERNAME_OPTION))
     test_suite.assert_equals(build_console_output(acct1_pw), print_command(exec, acct1_tag, vault_key, CommandLineOptions.PASSWORD_OPTION))
     test_suite.assert_equals(build_console_output(acct1_note), print_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION))
@@ -308,7 +322,7 @@ def test_update(exec):
     test_suite.assert_equals(build_console_output(acct1_un_new), print_command(exec, acct1_tag, vault_key, CommandLineOptions.USERNAME_OPTION))
     test_suite.assert_equals(build_console_output(acct1_pw_new), print_command(exec, acct1_tag, vault_key, CommandLineOptions.PASSWORD_OPTION))
     test_suite.assert_equals(build_console_output(acct1_note_new), print_command(exec, acct1_tag, vault_key, CommandLineOptions.NOTE_OPTION))
-
+    
     add_command(exec, acct2_tag, vault_key, acct2_un, acct2_pw, None)
     update_command(exec, acct2_tag, vault_key, CommandLineOptions.NOTE_OPTION, acct2_note)
     test_suite.assert_equals(build_console_output(acct1_tag, acct2_tag), list_command(exec, vault_key))
@@ -437,12 +451,13 @@ def add_command(exec, account_name, vault_key, un=None, pw=None, file_path=None)
             account_name,
             CommandLineOptions.KEY_OPTION,
             vault_key)
+
     return exec_cmd(cmd)
 
 if __name__ == "__main__":
     exec = './bin/' + program_name()
     test_vault(exec)
     test_print(exec)
-    #test_clip(exec)
+    test_clip(exec)
     test_update(exec)
     test_add(exec)
