@@ -34,19 +34,31 @@ $(BUILD_DIR)VaultManager.o: $(SRC_DIR)VaultManager.cpp $(INCLUDE_DIR)VaultManage
 	$(CXX) $(CXXFLAGS) -c $(SRC_DIR)VaultManager.cpp -o $@
 
 install: $(PROG)
-	cp $(PROG) $(INSTALL_DIR); chmod +x $(INSTALL_DIR)$(PROG_NAME)
+	sudo cp $(PROG) $(INSTALL_DIR); sudo chmod +x $(INSTALL_DIR)$(PROG_NAME)
 
 uninstall: $(PROG)
-	rm -rf $(INSTALL_DIR)$(PROG_NAME)
+	sudo rm -rf $(INSTALL_DIR)$(PROG_NAME)
+
+get-dependencies:
+	sudo apt-get install libtomcrypt-dev; sudo apt install xclip
+
+remove-dependencies:
+	sudo apt-get autoremove libtomcrypt-dev; sudo apt autoremove xclip
 
 clean:
 	rm $(PROG) $(OBJS)
 
 test: $(PROG) $(TEST)
-	python3 $(TEST)
+        ifneq (, $(shell which python3))
+		python3 $(TEST)
+        else ifneq (, $(shell which py))
+		py $(TEST)
+        else ifneq (, $(shell which python))
+        	$(error "test function requires python 3")
+        endif
 
 run: $(PROG)
 	./$(PROG)
 
 .PHONY:
-	install uninstall clean test run
+	install uninstall clean test run get-dependencies remove-dependencies
