@@ -34,16 +34,16 @@ $(BUILD_DIR)VaultManager.o: $(SRC_DIR)VaultManager.cpp $(INCLUDE_DIR)VaultManage
 	$(CXX) $(CXXFLAGS) -c $(SRC_DIR)VaultManager.cpp -o $@
 
 install: $(PROG)
-	sudo cp $(PROG) $(INSTALL_DIR); sudo chmod +x $(INSTALL_DIR)$(PROG_NAME)
+	cp $(PROG) $(INSTALL_DIR); chmod +x $(INSTALL_DIR)$(PROG_NAME)
 
 uninstall: $(PROG)
-	sudo rm -rf $(INSTALL_DIR)$(PROG_NAME)
+	rm -rf $(INSTALL_DIR)$(PROG_NAME)
 
 get-dependencies:
-	sudo apt-get install libtomcrypt-dev; sudo apt install xclip
+	apt-get install libtomcrypt-dev; apt install xclip
 
 remove-dependencies:
-	sudo apt-get autoremove libtomcrypt-dev; sudo apt autoremove xclip
+	apt-get autoremove libtomcrypt-dev; apt autoremove xclip
 
 clean:
 	rm $(PROG) $(OBJS)
