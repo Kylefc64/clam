@@ -1,4 +1,7 @@
 # -*- coding: UTF-8 -*-
+import sys
+import string
+import random
 import subprocess
 import os
 from pathlib import Path
@@ -32,7 +35,7 @@ class TestSuite:
         if expected == actual:
             self.passed += 1
         else:
-            print("Test " + str(self.total) + " failed. Expected: " + expected + " Actual: " + actual)
+            print("Test " + str(self.total) + " failed. Expected: " + str(expected) + " Actual: " + str(actual))
     
     def finish(self):
         print("Test suite [" + self.test_name + "] finished. " + str(self.passed) + '/' + str(self.total) + " tests passed.")
@@ -454,6 +457,116 @@ def add_command(exec, account_name, vault_key, un=None, pw=None, file_path=None)
 
     return exec_cmd(cmd)
 
+def gen_rand_str(n=random.randint(1, 1024)):
+    return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(n))
+
+def get_vault_filepath(vault_name):
+    return program_data_dir() + 'vaults/' + vault_name
+
+def read_raw_data(file_path):
+    file = open(file_path, "rb")
+    data = file.read()
+    file.close()
+    return data
+
+"""
+    Tests the cryptographic integrity of the application.
+"""
+def test_crypto(exec):
+
+    clean_dir()
+
+    str1, str2, str3 = 'kylecripps', 'apple', 'helloworld'
+
+    ascii_string = 'fhahffhsappledafkjjsfhasdkylecrippsfSADFASdfSDFDsafhsdfhashjdfhelloworld'
+    file = open('/home/kyle/test', "w")
+    file.write(ascii_string)
+    file.close()
+
+    file = open('/home/kyle/test', "rb")
+    raw_string = file.read()
+    file.close()
+
+    test_suite_pre = TestSuite('test_crypto_pre')
+    test_suite_pre.assert_equals(True, str1.encode() in raw_string)
+    test_suite_pre.assert_equals(True, str2.encode() in raw_string)
+    test_suite_pre.assert_equals(True, str2.encode() in raw_string)
+    test_suite_pre.finish()
+
+    clean_dir()
+
+    # For X iterations:
+        # Generate a random value for a vault key and name
+        # Execute an add vault command to create a vault using that key and name
+        # Generate random values for an account tag, username, password, and note
+        # Create an empty set of raw vault data
+        # For Y iterations:
+            # Execute an add command to add these acct details to the vault
+            # Execute a print command(s) and verify that these account details were correctly encrypted and decrypted
+            # Parse the vault file to verify that it does not contain a substring that is equal to the acct tag, username, password, or note
+            # Store the raw vault data in a set
+            # Iterate through the set of raw vault data and assert that no entry in the set is equal to another
+
+    clean_dir()
+
+    test_suite = TestSuite('test_crypto')
+
+    # Number of random datasets to re-encrypt & number of times to re-encrypt each dataset:
+    num_datasets, num_encryptions = 20, 100
+
+    total_iterations = num_datasets * num_encryptions
+
+    for i in range(num_datasets):
+
+        sys.stdout.write("\033[K") # clear line
+        sys.stdout.write('Running test_crypto: ' + str(100 * (i*num_encryptions / total_iterations)) + '% complete...\r')
+        sys.stdout.flush()
+
+        # Create vault using randomly generated vault name and key:
+        vault_key = gen_rand_str()
+        vault_name = gen_rand_str(255)
+        add_vault_command(exec, vault_name, vault_key)
+        switch_vault_command(exec, vault_name, vault_key)
+
+        # Generate random account data:
+        acct_tag = gen_rand_str()
+        acct_tag_bin = acct_tag.encode()
+        acct_username = gen_rand_str()
+        acct_username_bin = acct_username.encode()
+        acct_password = gen_rand_str()
+        acct_password_bin = acct_password.encode()
+        acct_note = gen_rand_str()
+        acct_note_bin = acct_note.encode()
+
+        encrypted_vault_data_set = set() # set of raw encrypted vault data for this plaintext dataset
+
+        for j in range(num_encryptions):
+            add_command(exec, acct_tag, vault_key, acct_username, acct_password, None)
+            update_command(exec, acct_tag, vault_key, CommandLineOptions.NOTE_OPTION, acct_note)
+            test_suite.assert_equals(build_console_output('un=' + acct_username, 'pw=' + acct_password, 'note=' + acct_note).encode(),
+                                     print_command(exec, acct_tag, vault_key).encode())
+
+            encrypted_vault_data = read_raw_data(get_vault_filepath(vault_name))
+
+            # Assert that the encrypted file contains no substrings equal to any of the raw plaintext input data:
+            test_suite.assert_equals(True, acct_tag_bin not in encrypted_vault_data
+                                       and acct_username_bin not in encrypted_vault_data
+                                       and acct_password_bin not in encrypted_vault_data
+                                       and acct_note_bin not in encrypted_vault_data)
+
+            # Assert that the raw encrypted file contents has not been seen before for the same set of account data:
+            test_suite.assert_equals(True, encrypted_vault_data not in encrypted_vault_data_set)
+            encrypted_vault_data_set.add(encrypted_vault_data)
+
+            # Remove the account dataset from the vault so that it can be re-added and re-encrypted next iteration:
+            update_command(exec, acct_tag, vault_key, CommandLineOptions.DELETE_OPTION)
+
+
+    test_suite.finish()
+
+    clean_dir()
+
+
 if __name__ == "__main__":
     exec = './bin/' + program_name()
     test_vault(exec)
@@ -461,3 +574,4 @@ if __name__ == "__main__":
     test_clip(exec)
     test_update(exec)
     test_add(exec)
+    test_crypto(exec)
