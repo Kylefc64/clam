@@ -473,28 +473,6 @@ def read_raw_data(file_path):
     Tests the cryptographic integrity of the application.
 """
 def test_crypto(exec):
-
-    clean_dir()
-
-    str1, str2, str3 = 'kylecripps', 'apple', 'helloworld'
-
-    ascii_string = 'fhahffhsappledafkjjsfhasdkylecrippsfSADFASdfSDFDsafhsdfhashjdfhelloworld'
-    file = open('/home/kyle/test', "w")
-    file.write(ascii_string)
-    file.close()
-
-    file = open('/home/kyle/test', "rb")
-    raw_string = file.read()
-    file.close()
-
-    test_suite_pre = TestSuite('test_crypto_pre')
-    test_suite_pre.assert_equals(True, str1.encode() in raw_string)
-    test_suite_pre.assert_equals(True, str2.encode() in raw_string)
-    test_suite_pre.assert_equals(True, str2.encode() in raw_string)
-    test_suite_pre.finish()
-
-    clean_dir()
-
     # For X iterations:
         # Generate a random value for a vault key and name
         # Execute an add vault command to create a vault using that key and name
@@ -519,7 +497,7 @@ def test_crypto(exec):
     for i in range(num_datasets):
 
         sys.stdout.write("\033[K") # clear line
-        sys.stdout.write('Running test_crypto: ' + str(100 * (i*num_encryptions / total_iterations)) + '% complete...\r')
+        sys.stdout.write('Running test_crypto: ' + str(100 * (i * num_encryptions / total_iterations)) + '% complete...\r')
         sys.stdout.flush()
 
         # Create vault using randomly generated vault name and key:
