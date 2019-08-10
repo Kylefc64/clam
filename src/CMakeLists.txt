@@ -1,0 +1,9 @@
+set(CLAM_SRC_FILES
+    ${CLAM_SRC_FILES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Account.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/CommandLineParser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Utils.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Vault.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/VaultManager.cpp
+    PARENT_SCOPE)

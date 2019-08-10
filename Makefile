@@ -1,5 +1,5 @@
 SRC_DIR=src/
-INCLUDE_DIR=include/
+INCLUDE_DIR=src/
 BUILD_DIR=build/
 BIN_DIR=bin/
 INSTALL_DIR=/usr/local/bin/

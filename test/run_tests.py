@@ -74,7 +74,7 @@ def exec_cmd(cmd):
     # https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
 
     # return subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.read().decode('UTF-8').rstrip('\t\n ')
-    tempfile = open('./test/temp', 'w+')
+    tempfile = open('tmp34783487543857', 'w+')
     process = subprocess.Popen(cmd, shell=True, stdout=tempfile)
     process.wait()
     tempfile.seek(0)
@@ -87,7 +87,7 @@ def construct_cmd(*args):
 
 def clean_dir():
     exec_cmd(construct_cmd('rm', '-rf', program_data_dir()))
-    os.remove('./test/temp')
+    os.remove('tmp34783487543857')
 
 def test_vault(exec):
     # tests vault commands
