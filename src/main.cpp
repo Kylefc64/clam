@@ -18,17 +18,17 @@
 const std::string getProgramName(char *argv[]);
 const std::string getUserHomeDir();
 void initDataDirs(const std::string &programDataDir, const std::string &vaultDir);
-const std::string getVaultKey(const CommandLineParser& commandOpts);
-const std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt);
+const std::string getVaultKey(const CommandLineParser &commandOpts);
+const std::string getAccountName(const CommandLineParser &commandOpts, CommandLineOptions nameOpt);
 
 void handleInvalidCommand(const std::string &errorDetails);
-void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager);
+void processVaultCommand(const CommandLineParser &commandOpts, VaultManager &vaultManager);
 void processHelpCommand();
-void processAccountCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager);
-void processAccountPrintCommand(const CommandLineParser& commandOpts, Vault &activeVault);
-void processAccountClipCommand(const CommandLineParser& commandOpts, Vault &activeVault);
-void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &activeVault);
-void processAccountAddCommand(const CommandLineParser& commandOpts, Vault &activeVault);
+void processAccountCommand(const CommandLineParser &commandOpts, VaultManager &vaultManager);
+void processAccountPrintCommand(const CommandLineParser &commandOpts, Vault &activeVault);
+void processAccountClipCommand(const CommandLineParser &commandOpts, Vault &activeVault);
+void processAccountUpdateCommand(const CommandLineParser &commandOpts, Vault &activeVault);
+void processAccountAddCommand(const CommandLineParser &commandOpts, Vault &activeVault);
 
 int main(int argc, char *argv[]) {
     Utils::debugDisable();
@@ -104,7 +104,7 @@ void initDataDirs(const std::string &programDataDir, const std::string &vaultDir
     Attempts to retrieve the KEY_OPTION parameter from the command options and
     reports a generic error if the option does not exist.
 */
-const std::string getVaultKey(const CommandLineParser& commandOpts) {
+const std::string getVaultKey(const CommandLineParser &commandOpts) {
     const std::string vaultKey = commandOpts.getOpt(CommandLineOptions::KEY_OPTION);
     if (vaultKey == "") {
         handleInvalidCommand("No vault key provided.");
@@ -116,7 +116,7 @@ const std::string getVaultKey(const CommandLineParser& commandOpts) {
     Attempts to retrieve the name parameter from the command options and
     reports a generic error if the option does not exist.
 */
-const std::string getAccountName(const CommandLineParser& commandOpts, CommandLineOptions nameOpt) {
+const std::string getAccountName(const CommandLineParser &commandOpts, CommandLineOptions nameOpt) {
     const std::string name = commandOpts.getOpt(nameOpt);
     if (name == "") {
         handleInvalidCommand("No account name provided.");
@@ -137,7 +137,7 @@ void handleInvalidCommand(const std::string &errorDetails) {
 /**
     Process a command that pertains to an entire vault.
 */
-void processVaultCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager) {
+void processVaultCommand(const CommandLineParser &commandOpts, VaultManager &vaultManager) {
     Utils::debugPrint(std::cout, "Entered processVaultCommand\n");
 
     const std::string addOption = "add";
@@ -282,7 +282,7 @@ void processHelpCommand() {
 /**
     Processes a command that pertains to some account in the currently active vault.
 */
-void processAccountCommand(const CommandLineParser& commandOpts, VaultManager &vaultManager) {
+void processAccountCommand(const CommandLineParser &commandOpts, VaultManager &vaultManager) {
     Utils::debugPrint(std::cout, "Entered processAccountCommand\n");
 
     std::string vaultKey = getVaultKey(commandOpts);
@@ -323,7 +323,7 @@ void processAccountCommand(const CommandLineParser& commandOpts, VaultManager &v
 /**
     Processes a print command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountPrintCommand(const CommandLineParser& commandOpts, Vault &activeVault) {
+void processAccountPrintCommand(const CommandLineParser &commandOpts, Vault &activeVault) {
     Utils::debugPrint(std::cout, "Entered processAccountPrintCommand\n");
 
     std::string accountName = getAccountName(commandOpts, CommandLineOptions::PRINT_OPTION);
@@ -356,7 +356,7 @@ void processAccountPrintCommand(const CommandLineParser& commandOpts, Vault &act
         https://stackoverflow.com/questions/40436045/in-qt-how-can-i-register-a-qstring-to-my-systems-clipboard-both-quoted-and-no/40437290#40437290
         https://linoxide.com/linux-how-to/copy-paste-commands-output-xclip-linux/
 */
-void processAccountClipCommand(const CommandLineParser& commandOpts, Vault &activeVault) {
+void processAccountClipCommand(const CommandLineParser &commandOpts, Vault &activeVault) {
     Utils::debugPrint(std::cout, "Entered processAccountClipCommand\n");
 
     std::string accountName = getAccountName(commandOpts, CommandLineOptions::CLIP_OPTION);
@@ -368,7 +368,6 @@ void processAccountClipCommand(const CommandLineParser& commandOpts, Vault &acti
 
     Account *account = optAccount.value();
 
-    // TODO: How to get xclip to not add a newline to end of copied string??
     if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
         clip::set_text(account->getUsername());
     } else if (commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
@@ -382,7 +381,7 @@ void processAccountClipCommand(const CommandLineParser& commandOpts, Vault &acti
 /**
     Processes an update command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &activeVault) {
+void processAccountUpdateCommand(const CommandLineParser &commandOpts, Vault &activeVault) {
     Utils::debugPrint(std::cout, "Entered processAccountUpdateCommand\n");
 
     std::string accountName = getAccountName(commandOpts, CommandLineOptions::UPDATE_OPTION);
@@ -425,7 +424,7 @@ void processAccountUpdateCommand(const CommandLineParser& commandOpts, Vault &ac
 /**
     Processes an add command. Assumes the active vault has successfully been decrypted.
 */
-void processAccountAddCommand(const CommandLineParser& commandOpts, Vault &activeVault) {
+void processAccountAddCommand(const CommandLineParser &commandOpts, Vault &activeVault) {
     Utils::debugPrint(std::cout, "Entered processAccountAddCommand\n");
 
     std::string accountName = getAccountName(commandOpts, CommandLineOptions::ADD_OPTION);

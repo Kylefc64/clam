@@ -63,8 +63,7 @@ Vault::Vault(const std::string &vaultDir, const std::string &vaultName, const st
 Vault::~Vault() {
     // Clear all sensitive account data from memory:
     memset((unsigned char *)vaultKey.c_str(), 0, vaultKey.size());
-    for (size_t i = 0; i < accounts.size(); ++i)
-    {
+    for (size_t i = 0; i < accounts.size(); ++i) {
         accounts[i].wipeSensitiveData();
     }
 }
