@@ -13,6 +13,8 @@
 #include "Utils.h"
 #include "VaultManager.h"
 
+#include "clip/clip.h"
+
 const std::string getProgramName(char *argv[]);
 const std::string getUserHomeDir();
 void initDataDirs(const std::string &programDataDir, const std::string &vaultDir);
@@ -368,9 +370,9 @@ void processAccountClipCommand(const CommandLineParser& commandOpts, Vault &acti
 
     // TODO: How to get xclip to not add a newline to end of copied string??
     if (commandOpts.containsOpt(CommandLineOptions::USERNAME_OPTION)) {
-        system(("echo " + account->getUsername() + " | xclip -selection c").c_str());
+        clip::set_text(account->getUsername());
     } else if (commandOpts.containsOpt(CommandLineOptions::PASSWORD_OPTION)) {
-        system(("echo " + account->getPassword() + " | xclip -selection c").c_str());
+        clip::set_text(account->getPassword());
     } else {
         handleInvalidCommand("Invalid clip option.");
     }

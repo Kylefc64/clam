@@ -62,4 +62,4 @@ A light, terminal-based application for securely managing all of your account pa
 
 ## Application Dependencies:
 * libtomcrypt (libtomcrypt-dev package)
-* xclip
+* libx11-dev

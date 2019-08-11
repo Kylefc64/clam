@@ -1,0 +1,1 @@
+/usr/bin/c++    -rdynamic CMakeFiles/clam.dir/src/Account.cpp.o CMakeFiles/clam.dir/src/CommandLineParser.cpp.o CMakeFiles/clam.dir/src/main.cpp.o CMakeFiles/clam.dir/src/Utils.cpp.o CMakeFiles/clam.dir/src/Vault.cpp.o CMakeFiles/clam.dir/src/VaultManager.cpp.o  -o ../bin/clam -ltomcrypt ../lib/clip/libclip.a -lxcb -lpthread 
