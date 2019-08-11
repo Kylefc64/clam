@@ -14,7 +14,7 @@ gen-make() {
     fi
 
     cd ${make_build_tree_path}
-    cmake ..
+    cmake -D CLIP_EXAMPLES=OFF -D CLIP_TESTS=OFF -D CLIP_X11_WITH_PNG=OFF ..
     cd ..
 }
 
