@@ -1,6 +1,6 @@
 #include "Utils.h"
 
-#ifdef linux
+#ifdef __linux__
 #include <tomcrypt.h>
 #endif
 #include <sys/types.h>

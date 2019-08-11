@@ -1,6 +1,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
-#ifdef linux
+#ifdef __linux__
 #include <pwd.h>
 #include <unistd.h>
 #endif
@@ -81,7 +81,7 @@ const std::string getUserHomeDir() {
 	return getenv("USERPROFILE");
 #endif
 
-#ifdef linux
+#ifdef __linux__
     // Get user's home directory (https://stackoverflow.com/questions/2910377/get-home-directory-in-linux):
     const char *userHomeDir;
     if (NULL == (userHomeDir = getenv("HOME"))) {

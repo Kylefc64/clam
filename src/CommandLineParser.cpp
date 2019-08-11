@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#ifdef linux
+#ifdef __linux__
 #include <getopt.h>
 #endif
 #ifdef _WIN32
