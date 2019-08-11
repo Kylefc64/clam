@@ -22,7 +22,7 @@ set_target_properties(clip PROPERTIES
 
 target_link_libraries(clam PRIVATE -ltomcrypt clip) # CXX_LINKER_FLAGS (ltomcrypt shared, clip static)
 
-target_compile_options(clam PRIVATE -std=c++17) # CXX_COMPILE_FLAGS
+target_compile_options(clam PRIVATE -std=c++17 -Wall) # CXX_COMPILE_FLAGS
 
 set_target_properties(clam PROPERTIES
     LINKER_LANGUAGE CXX

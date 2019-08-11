@@ -128,10 +128,10 @@ void Account::setNote(const std::string &n) {
 */
 std::vector<uint8_t> Account::serialize() const {
     std::vector<uint8_t> serialized;
-    uint32_t tagSize = tag.size(),
-        usernameSize = username.size(),
-        passwordSize = password.size(),
-        noteSize = note.size();
+    uint32_t tagSize = (uint32_t)tag.size(),
+        usernameSize = (uint32_t)username.size(),
+        passwordSize = (uint32_t)password.size(),
+        noteSize = (uint32_t)note.size();
     serialized.insert(serialized.end(), (char *)&tagSize, (char *)&tagSize + sizeof(tagSize));
     serialized.insert(serialized.end(), tag.c_str(), tag.c_str() + tagSize);
     serialized.insert(serialized.end(), (char *)&usernameSize, (char *)&usernameSize + sizeof(usernameSize));

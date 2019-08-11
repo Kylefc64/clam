@@ -24,9 +24,9 @@ public:
     std::string getVaultName() const;
     std::string getVaultKey() const;
 private:
-    bool exists(const std::string &tag) const;;
+    bool exists(const std::string &tag) const;
     void notExistsError() const;
-    bool existsError() const;
+    void existsError() const;
     std::string vaultName;
     std::string vaultKey;
 

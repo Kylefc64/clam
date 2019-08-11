@@ -17,7 +17,7 @@ public:
     VaultManager(const std::string &metadataFilePath, const std::string &vaultDir);
     const std::string& getVaultDir() const;
     bool empty() const;
-    unsigned int size() const;
+    size_t size() const;
     VaultInfo& activeVaultInfo();
     void addVault(const std::string &vaultName, const std::string &vaultKey);
     void updateActiveVaultKey(const std::string &oldVaultKey, const std::string &newVaultKey);

@@ -13,12 +13,12 @@ bool Utils::debug = true;
   'size' is some multiple of 4-bytes and that 'result' is large enough
   to hold the result.
 */
-void Utils::genRand(unsigned char *result, int size) {
+void Utils::genRand(unsigned char *result, uint32_t size) {
     std::random_device rd;
     std::mt19937 mt(rd());
     std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF);
     uint32_t *resultWriter = (uint32_t *)result;
-    for (int i = 0; i < size / 4; ++i) {
+    for (uint32_t i = 0; i < size / 4; ++i) {
         resultWriter[i] = dist(mt);
     }
 }
@@ -28,7 +28,7 @@ void Utils::genRand(unsigned char *result, int size) {
   Assumes that sizeof(buffer1) == sizeof(buffer2).
 */
 bool Utils::contentsEqual(const unsigned char *buffer1, const unsigned char *buffer2, uint32_t size) {
-    for (int i = 0; i < size; ++i) {
+    for (uint32_t i = 0; i < size; ++i) {
         if (buffer1[i] != buffer2[i]) {
             return false;
         }
@@ -40,7 +40,7 @@ bool Utils::contentsEqual(const unsigned char *buffer1, const unsigned char *buf
   Sets the contents of the given string to 0.
 */
 void Utils::clearString(std::string &str) {
-    for (int i = 0; i < str.size(); ++i) {
+    for (size_t i = 0; i < str.size(); ++i) {
         str[i] = (char)0;
     }
 }

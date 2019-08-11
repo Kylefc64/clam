@@ -10,12 +10,12 @@
     Decrypts and loads into memory the vault located at vaultDir/vaultName, if such a vault exists.
 */
 Vault::Vault(const std::string &vaultDir, const std::string &vaultName, const std::string &vaultKey)
-: vaultFilePath(vaultDir + vaultName), vaultName(vaultName), vaultKey(vaultKey) {
+: vaultName(vaultName), vaultKey(vaultKey), vaultFilePath(vaultDir + vaultName) {
     std::ifstream fileStream(vaultFilePath);
     
     // Attempt to load the vault with the given name:
     fileStream.seekg(0, fileStream.end);
-    int fileSize = fileStream.tellg();
+    std::streamoff fileSize = fileStream.tellg();
     fileStream.seekg(0, fileStream.beg);
     if (fileSize <= 0) {
         // Do not try to decrypt and load accounts from an empty vault:
@@ -24,14 +24,14 @@ Vault::Vault(const std::string &vaultDir, const std::string &vaultName, const st
 
     // Compute sha512(vaultKey) (skey):
     unsigned char skey[SKEY_LENGTH];
-    Utils::sha256(skey, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+    Utils::sha256(skey, (unsigned char *)vaultKey.c_str(), (unsigned long)vaultKey.size());
 
     // Load 32-byte iv
     unsigned char iv[SKEY_LENGTH];
     fileStream.read((char *)iv, SKEY_LENGTH);
 
     // Load remaining bytes (until EOF) into a byte array
-    int ciphertextSize = fileSize - SKEY_LENGTH;
+    std::streamoff ciphertextSize = fileSize - SKEY_LENGTH;
     unsigned char *ciphertext = new unsigned char[ciphertextSize];
     fileStream.read((char *)ciphertext, ciphertextSize);
 
@@ -39,7 +39,7 @@ Vault::Vault(const std::string &vaultDir, const std::string &vaultName, const st
     unsigned char *plaintext = new unsigned char[ciphertextSize];
 
     // Use sha(vaultKey) and iv to decrypt account list byte array
-    Utils::ctrDecrypt(ciphertext, plaintext, ciphertextSize, iv, skey, SKEY_LENGTH);
+    Utils::ctrDecrypt(ciphertext, plaintext, (int)ciphertextSize, iv, skey, SKEY_LENGTH);
     
     // Load one account at a time from the decrypted byte array:
     unsigned char *plaintextIter = plaintext;
@@ -63,7 +63,7 @@ Vault::Vault(const std::string &vaultDir, const std::string &vaultName, const st
 Vault::~Vault() {
     // Clear all sensitive account data from memory:
     memset((unsigned char *)vaultKey.c_str(), 0, vaultKey.size());
-    for (int i = 0; i < accounts.size(); ++i)
+    for (size_t i = 0; i < accounts.size(); ++i)
     {
         accounts[i].wipeSensitiveData();
     }
@@ -73,7 +73,7 @@ Vault::~Vault() {
     Print all Account tags, separated by newlines, to the output stream.
 */
 void Vault::printTags(std::ostream &outputStream) const {
-    for (int i = 0; i < accounts.size(); ++i) {
+    for (size_t i = 0; i < accounts.size(); ++i) {
         outputStream << accounts[i].getTag() << '\n';
     }
 }
@@ -82,7 +82,7 @@ void Vault::printTags(std::ostream &outputStream) const {
     Print all nicely formatted Account info to the output stream.
 */
 void Vault::printInfo(std::ostream &outputStream) const {
-    for (int i = 0; i < accounts.size(); ++i) {
+    for (size_t i = 0; i < accounts.size(); ++i) {
         outputStream << "Account " << i << " tag: " << accounts[i].getTag() << '\n'
             << "Account " << i << " username: " << accounts[i].getUsername() << '\n'
             << "Account " << i << " password: " << accounts[i].getPassword() << '\n'
@@ -95,7 +95,7 @@ void Vault::printInfo(std::ostream &outputStream) const {
     std::nullopt if an account with the given tag does not exist.
 */
 std::optional<Account *> Vault::getAccount(const std::string &tag) {
-    for (int i = 0; i < accounts.size(); ++i) {
+    for (size_t i = 0; i < accounts.size(); ++i) {
         if (accounts[i].getTag() == tag) {
             return &accounts[i];
         }
@@ -148,7 +148,7 @@ void Vault::writeVault() const {
     // Create a byte array from list of accounts:
     std::vector<uint8_t> serializedAccountList;
     std::vector<uint8_t> serializedAccount;
-    for (int i = 0; i < accounts.size(); ++i) {
+    for (size_t i = 0; i < accounts.size(); ++i) {
         serializedAccount = accounts[i].serialize();
         serializedAccountList.insert(serializedAccountList.end(),
                                      serializedAccount.data(),
@@ -163,13 +163,13 @@ void Vault::writeVault() const {
 
     // Compute sha512(vaultKey) (skey):
     unsigned char skey[SKEY_LENGTH];
-    Utils::sha256(skey, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+    Utils::sha256(skey, (unsigned char *)vaultKey.c_str(), (unsigned long)vaultKey.size());
 
     // Allocate array in which to store IV/nonce:
     unsigned char iv[SKEY_LENGTH];
 
     // Use sha256(vaultKey) as skey to encrypt byte array:
-    Utils::ctrEncrypt(plaintext, ciphertext, plaintextSize, iv, skey, SKEY_LENGTH);
+    Utils::ctrEncrypt(plaintext, ciphertext, (int)plaintextSize, iv, skey, SKEY_LENGTH);
 
     // write sha(sha(vaultKey)), iv, and encrypted byte array to disk under vaults/vaultName
     std::ofstream fileStream(vaultFilePath);
@@ -198,7 +198,7 @@ std::string Vault::getVaultKey() const {
     Returns true if an Account with the given tag exists and false otherwise.
 */
 bool Vault::exists(const std::string &tag) const {
-    for (int i = 0; i < accounts.size(); ++i) {
+    for (size_t i = 0; i < accounts.size(); ++i) {
         if (accounts[i].getTag() == tag) {
             return true;
         }
@@ -217,6 +217,6 @@ void Vault::notExistsError() const {
 /**
     Prints an error to the console indicating that a specified account already exists.
 */
-bool Vault::existsError() const {
+void Vault::existsError() const {
     std::cout << "Error: There already exists an account with the specified name." << std::endl;
 }

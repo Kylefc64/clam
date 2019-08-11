@@ -18,7 +18,7 @@ bool VaultManager::empty() const {
     return vaultMetaData.empty();
 }
 
-unsigned int VaultManager::size() const {
+size_t VaultManager::size() const {
     return vaultMetaData.size();
 }
 
@@ -31,7 +31,7 @@ void VaultManager::addVault(const std::string &vaultName, const std::string &vau
     newVaultInfo.vaultName = vaultName;
 
     // Error if the vault already exists:
-    for (int i = 1; i < vaultMetaData.size(); i++) {
+    for (size_t i = 1; i < vaultMetaData.size(); i++) {
         if (vaultMetaData[i].vaultName == newVaultInfo.vaultName) {
             std::cout << "Error: A vault with the given name already exists." << std::endl;
             return;
@@ -46,7 +46,7 @@ void VaultManager::addVault(const std::string &vaultName, const std::string &vau
     // Generate pw hash
     unsigned char newVaultSkey[SKEY_LENGTH];
     unsigned char concatBuffer[SKEY_LENGTH * 2];
-    Utils::sha256(newVaultSkey, (unsigned char *)vaultKey.c_str(), vaultKey.size());
+    Utils::sha256(newVaultSkey, (unsigned char *)vaultKey.c_str(), (unsigned long)vaultKey.size());
     Utils::concatArr(newVaultSkey, newVaultInfo.vaultSkeySalt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
     Utils::sha256(newVaultInfo.vaultSkeyHash, concatBuffer, SKEY_LENGTH * 2);
 
@@ -93,7 +93,7 @@ void VaultManager::updateActiveVaultKey(const std::string &oldVaultKey, const st
 
     // calcuate new hash for updated metadata and fill upadatedVaultInfo.vaultSkeyHash
     unsigned char concatBuffer[SKEY_LENGTH * 2];
-    Utils::sha256(upadatedVaultInfo.vaultSkeyHash, (unsigned char *)newVaultKey.c_str(), newVaultKey.size());
+    Utils::sha256(upadatedVaultInfo.vaultSkeyHash, (unsigned char *)newVaultKey.c_str(), (unsigned long)newVaultKey.size());
     Utils::concatArr(upadatedVaultInfo.vaultSkeyHash, newSalt, SKEY_LENGTH, SKEY_LENGTH, concatBuffer);
     Utils::sha256(upadatedVaultInfo.vaultSkeyHash, concatBuffer, SKEY_LENGTH * 2);
 
@@ -109,7 +109,7 @@ void VaultManager::switchActiveVault(const std::string &vaultKey, const std::str
         return;
     }
 
-    for (int i = 1; i < vaultMetaData.size(); ++i) {
+    for (size_t i = 1; i < vaultMetaData.size(); ++i) {
         // Find the vault to switch to
         if (vaultMetaData[i].vaultName == vaultToSwitchToName) {
             // Validate key
@@ -143,7 +143,7 @@ void VaultManager::deleteVault(const std::string &vaultKey, const std::string &v
     std::string filePathToRemove = vaultDir + vaultToDeleteName;
 
     // Search in vaultMetaData for VaultInfo to delete
-    for (int i = 1; i < vaultMetaData.size(); i++) { 
+    for (size_t i = 1; i < vaultMetaData.size(); i++) {
         if (vaultMetaData[i].vaultName == vaultToDeleteName) {
             // Verify that vaultKey is correct and report error and exit if not
             if (!validateKey(vaultKey, vaultMetaData[i].vaultSkeySalt, vaultMetaData[i].vaultSkeyHash)) {
@@ -169,7 +169,7 @@ void VaultManager::listVaultNames() const {
     if (checkIfEmpty()) {
         return;
     }
-    for (int i = 0; i < vaultMetaData.size(); i++) {
+    for (size_t i = 0; i < vaultMetaData.size(); i++) {
         std::cout << vaultMetaData[i].vaultName << std::endl;
     }
 }
@@ -224,7 +224,7 @@ void VaultManager::readVaultMetaData() {
 
     VaultInfo vaultInfo;
     uint32_t vaultNameSize;
-    for (int i = 0; i < numVaults; ++i) {
+    for (size_t i = 0; i < numVaults; ++i) {
         fileStream.read((char *)&vaultNameSize, sizeof(vaultNameSize)); // read vault name's size
         vaultInfo.vaultName.resize(vaultNameSize); // reserve vaultNameSize bytes
         fileStream.read((char *)&vaultInfo.vaultName[0], vaultNameSize); // read vaultName from file
@@ -257,14 +257,14 @@ void VaultManager::writeVaultMetaData() {
 
     std::ofstream fileStream(metadataFilePath);
 
-    uint32_t numVaults = vaultMetaData.size();
+    uint32_t numVaults = (uint32_t)vaultMetaData.size();
     fileStream.write((char *)&numVaults, sizeof(numVaults));
 
     VaultInfo vaultInfo;
     uint32_t vaultNameSize;
-    for (int i = 0; i < numVaults; ++i) {
+    for (size_t i = 0; i < numVaults; ++i) {
         vaultInfo = vaultMetaData[i];
-        vaultNameSize = vaultInfo.vaultName.size();
+        vaultNameSize = (uint32_t)vaultInfo.vaultName.size();
         fileStream.write((char *)&vaultNameSize, sizeof(vaultNameSize)); // write vault name's size
         fileStream.write((char *)vaultInfo.vaultName.c_str(), vaultNameSize); // write vaultName to file
         fileStream.write((char *)vaultInfo.vaultSkeyHash, SKEY_LENGTH);
@@ -275,7 +275,7 @@ void VaultManager::writeVaultMetaData() {
 
 void VaultManager::updateVaultInfo(VaultInfo &updatedVaultInfo) {
     // Search in vaultMetaData for VaultInfo to update
-    for (int i = 0; i < vaultMetaData.size(); i++) { 
+    for (size_t i = 0; i < vaultMetaData.size(); i++) {
         if (vaultMetaData[i].vaultName == updatedVaultInfo.vaultName) {
             // overwrite the metadata of the corresponding vault:
             vaultMetaData[i] = updatedVaultInfo;
