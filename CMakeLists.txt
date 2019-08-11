@@ -20,6 +20,12 @@ add_subdirectory(${EXTERN_DIR}) # Creates static clip library
 set_target_properties(clip PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${LIB_DIR}/clip")
 
+if(WIN32)
+  set_target_properties(getopt PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY "${LIB_DIR}/getopt")
+  target_link_libraries(clam PRIVATE getopt)
+endif()
+
 target_link_libraries(clam PRIVATE -ltomcrypt clip) # CXX_LINKER_FLAGS (ltomcrypt shared, clip static)
 
 target_compile_options(clam PRIVATE -std=c++17) # CXX_COMPILE_FLAGS

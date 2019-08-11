@@ -1,6 +1,8 @@
 #include "Utils.h"
 
+#ifdef linux
 #include <tomcrypt.h>
+#endif
 #include <sys/types.h>
 #include <random>
 #include <cstring>

@@ -2,7 +2,12 @@
 
 #include <vector>
 
+#ifdef linux
 #include <getopt.h>
+#endif
+#ifdef _WIN32
+#include "getopt/getopt.h"
+#endif
 #include <iostream>
 // getopt and getopt_long documentation: https://www.gnu.org/software/libc/manual/html_node/Getopt.html
 // how to avoid having to use "=" for options with optional arguments: https://stackoverflow.com/questions/1052746/getopt-does-not-parse-optional-arguments-to-parameters

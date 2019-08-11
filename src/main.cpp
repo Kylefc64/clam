@@ -1,7 +1,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifdef linux
 #include <pwd.h>
 #include <unistd.h>
+#endif
 
 #include <iostream>
 #include <string>
@@ -34,6 +36,7 @@ int main(int argc, char *argv[]) {
     Utils::debugDisable();
     Utils::debugPrint(std::cout, "Entered main\n");
 
+	// TODO: Update code to use Windows file path formats if _WIN32 defined
     const std::string programName = getProgramName(argv);
     const std::string userHomeDir = getUserHomeDir();
     const std::string programDataDir = std::string(userHomeDir) + "/." + programName + "/";
@@ -74,6 +77,11 @@ const std::string getProgramName(char *argv[]) {
     Gets and returns the path to this user's home directory.
 */
 const std::string getUserHomeDir() {
+#ifdef _WIN32
+	return getenv("USERPROFILE");
+#endif
+
+#ifdef linux
     // Get user's home directory (https://stackoverflow.com/questions/2910377/get-home-directory-in-linux):
     const char *userHomeDir;
     if (NULL == (userHomeDir = getenv("HOME"))) {
@@ -81,6 +89,7 @@ const std::string getUserHomeDir() {
     }
 
     return std::string(userHomeDir);
+#endif
 }
 
 /**
